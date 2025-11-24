@@ -38,19 +38,6 @@ export default defineNuxtConfig({
 		}
 	},
 
-	// App configuration
-	app: {
-		head: {
-			title: "OmniSale",
-			charset: "utf-8",
-			viewport: "width=device-width, initial-scale=1",
-			meta: [
-				{ name: "description", content: "OmniSale - Hệ thống quản lý bán hàng đa kênh" }
-			]
-		},
-		pageTransition: { name: "page", mode: "out-in" }
-	},
-
 	// Build configuration
 	build: {
 		transpile: []
@@ -60,12 +47,4 @@ export default defineNuxtConfig({
 	future: {
 		compatibilityVersion: 4
 	},
-
-	// Auto-import components
-	components: [
-		{
-			path: "~/components",
-			pathPrefix: false
-		}
-	]
 });
