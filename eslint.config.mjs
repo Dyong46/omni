@@ -16,6 +16,7 @@ export default withNuxt({
 		"quotes": ["error", "double"],
 		"semi": ["error", "always"],
 		"vue/valid-v-slot": "off",
+		"vue/no-multiple-template-root": "off",
 		"vue/html-indent": ["error", "tab", {
 			alignAttributesVertically: true,
 			attribute: 1,
