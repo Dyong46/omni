@@ -46,5 +46,5 @@ export default defineNuxtConfig({
 	// Experimental features for Nuxt 4
 	future: {
 		compatibilityVersion: 4
-	},
+	}
 });

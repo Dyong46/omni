@@ -1,5 +1,6 @@
 export default defineEventHandler((event) => {
-  return {
-    hello: 'world',
-  }
-})
+	console.log("Hello API called", event);
+	return {
+		hello: "world"
+	};
+});
