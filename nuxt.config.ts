@@ -20,6 +20,9 @@ export default defineNuxtConfig({
 		"@vueuse/nuxt"
 	],
 
+	// Plugins
+	plugins: [],
+
 	// CSS
 	css: ["~/assets/css/main.css"],
 

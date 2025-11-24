@@ -26,7 +26,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 }
 
 useSeoMeta({
-	title: "Đăng nhập - OmniSale"
+	title: "Login - OmniSale"
 });
 </script>
 
