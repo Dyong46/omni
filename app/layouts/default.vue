@@ -62,13 +62,84 @@ const links = [
 			open.value = false;
 		}
 	}, {
-		label: "Inbox",
-		icon: "i-lucide-inbox",
-		to: "/inbox",
-		badge: "4",
-		onSelect: () => {
-			open.value = false;
-		}
+		label: "Orders",
+		icon: "i-lucide-shopping-cart",
+		type: "trigger",
+		children: [{
+			label: "All Orders",
+			to: "/orders",
+			exact: true,
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Draft Orders",
+			to: "/draft_orders",
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Imcomplete",
+			to: "/orders/checkouts",
+			badge: "4",
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Bunk Delivery",
+			to: "/orders/mass_fulfill",
+			onSelect: () => {
+				open.value = false;
+			}
+		}]
+	}, {
+		label: "Ship",
+		icon: "i-lucide-truck",
+		type: "trigger",
+		children: [{
+			label: "Overview",
+			to: "/shipments/dashboard",
+			exact: true,
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Ship",
+			to: "/shipments",
+			onSelect: () => {
+				open.value = false;
+			}
+		}]
+	}, {
+		label: "Product",
+		icon: "i-lucide-tag",
+		type: "trigger",
+		children: [{
+			label: "All products",
+			to: "/products",
+			exact: true,
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Product Groups",
+			to: "/products/collections",
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Price List",
+			to: "/products/pricing_list",
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Product Inventory",
+			to: "/products/inventories",
+			onSelect: () => {
+				open.value = false;
+			}
+		}]
 	}, {
 		label: "Customers",
 		icon: "i-lucide-users",
@@ -77,10 +148,53 @@ const links = [
 			open.value = false;
 		}
 	}, {
+		label: "Fund Book",
+		icon: "i-lucide-circle-dollar-sign",
+		type: "trigger",
+		children: [{
+			label: "Fund Book",
+			to: "/products",
+			exact: true,
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Debt",
+			to: "/products/collections",
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Price List",
+			to: "/products/pricing_list",
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Product Inventory",
+			to: "/products/inventories",
+			onSelect: () => {
+				open.value = false;
+			}
+		}]
+	}, {
+		label: "Promotions",
+		icon: "i-lucide-gift",
+		to: "/discounts",
+		onSelect: () => {
+			open.value = false;
+		}
+	}, {
+		label: "Report",
+		icon: "i-lucide-chart-area",
+		to: "/reports",
+		onSelect: () => {
+			open.value = false;
+		}
+	}, {
 		label: "Settings",
 		to: "/settings",
 		icon: "i-lucide-settings",
-		defaultOpen: true,
 		type: "trigger",
 		children: [{
 			label: "General",
