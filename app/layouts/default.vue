@@ -74,7 +74,7 @@ const links = [
 			}
 		}, {
 			label: "Draft Orders",
-			to: "/draft_orders",
+			to: "/draft-orders",
 			onSelect: () => {
 				open.value = false;
 			}
@@ -87,7 +87,7 @@ const links = [
 			}
 		}, {
 			label: "Bunk Delivery",
-			to: "/orders/mass_fulfill",
+			to: "/orders/mass-fulfill",
 			onSelect: () => {
 				open.value = false;
 			}
@@ -129,7 +129,7 @@ const links = [
 			}
 		}, {
 			label: "Price List",
-			to: "/products/pricing_list",
+			to: "/products/pricing-list",
 			onSelect: () => {
 				open.value = false;
 			}
@@ -153,26 +153,14 @@ const links = [
 		type: "trigger",
 		children: [{
 			label: "Fund Book",
-			to: "/products",
+			to: "/accounting/transactions",
 			exact: true,
 			onSelect: () => {
 				open.value = false;
 			}
 		}, {
 			label: "Debt",
-			to: "/products/collections",
-			onSelect: () => {
-				open.value = false;
-			}
-		}, {
-			label: "Price List",
-			to: "/products/pricing_list",
-			onSelect: () => {
-				open.value = false;
-			}
-		}, {
-			label: "Product Inventory",
-			to: "/products/inventories",
+			to: "/accounting/debts",
 			onSelect: () => {
 				open.value = false;
 			}
@@ -231,17 +219,6 @@ const groups = computed(() => [
 		label: "Go to",
 		items: links.flat()
 	}
-	// {
-	// 	id: "code",
-	// 	label: "Code",
-	// 	items: [{
-	// 		id: "source",
-	// 		label: "View page source",
-	// 		icon: "i-simple-icons-github",
-	// 		to: `https://github.com/nuxt-ui-templates/dashboard/blob/main/app/pages${route.path === "/" ? "/index" : route.path}.vue`,
-	// 		target: "_blank"
-	// 	}]
-	// }
 ]);
 
 onMounted(async () => {
