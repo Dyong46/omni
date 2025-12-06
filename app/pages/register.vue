@@ -3,8 +3,13 @@ import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 
 const schema = z.object({
+	name: z.string().min(2, { message: "Name must be at least 2 characters" }),
 	email: z.string().email({ message: "Invalid email address" }),
-	password: z.string().min(6, { message: "Password must be at least 6 characters" })
+	password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+	confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+	message: "Passwords don't match",
+	path: ["confirmPassword"]
 });
 
 type Schema = z.output<typeof schema>;
@@ -14,8 +19,10 @@ definePageMeta({
 });
 
 const state = reactive<Partial<Schema>>({
+	name: undefined,
 	email: undefined,
-	password: undefined
+	password: undefined,
+	confirmPassword: undefined
 });
 
 const toast = useToast();
@@ -28,8 +35,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 	await new Promise(resolve => setTimeout(resolve, 1000));
 
 	toast.add({
-		title: "Login successful",
-		description: "Welcome back to OmniSale",
+		title: "Registration successful",
+		description: "Your account has been created successfully",
 		color: "success",
 		icon: "i-lucide-check-circle"
 	});
@@ -37,12 +44,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 	loading.value = false;
 	console.log(event.data);
 
-	// Navigate to home
-	navigateTo("/");
+	// Navigate to login
+	navigateTo("/login");
 }
 
 useSeoMeta({
-	title: "Login - OmniSale"
+	title: "Register - OmniSale"
 });
 </script>
 
@@ -56,18 +63,29 @@ useSeoMeta({
 				</div>
 				<div>
 					<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-						Welcome back
+						Create an account
 					</h1>
 					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-						Sign in to your OmniSale account
+						Get started with OmniSale today
 					</p>
 				</div>
 			</div>
 
-			<!-- Login Card -->
+			<!-- Register Card -->
 			<UCard class="overflow-hidden">
 				<div class="p-6 sm:p-8 space-y-6">
 					<UForm :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
+						<UFormField label="Full Name" name="name" required>
+							<UInput
+								v-model="state.name"
+								type="text"
+								placeholder="John Doe"
+								icon="i-lucide-user"
+								size="lg"
+								:disabled="loading"
+							/>
+						</UFormField>
+
 						<UFormField label="Email" name="email" required>
 							<UInput
 								v-model="state.email"
@@ -90,6 +108,17 @@ useSeoMeta({
 							/>
 						</UFormField>
 
+						<UFormField label="Confirm Password" name="confirmPassword" required>
+							<UInput
+								v-model="state.confirmPassword"
+								type="password"
+								placeholder="Confirm your password"
+								icon="i-lucide-lock"
+								size="lg"
+								:disabled="loading"
+							/>
+						</UFormField>
+
 						<UButton
 							type="submit"
 							size="lg"
@@ -97,17 +126,17 @@ useSeoMeta({
 							:loading="loading"
 							:disabled="loading"
 						>
-							<span>Sign in</span>
+							<span>Create account</span>
 						</UButton>
 					</UForm>
 				</div>
 			</UCard>
 
-			<!-- Sign up link -->
+			<!-- Sign in link -->
 			<p class="text-center text-sm text-gray-600 dark:text-gray-400">
-				Don't have an account?
-				<UButton variant="link" size="sm" class="p-0 h-auto font-semibold" :padded="false" to="/register">
-					Sign up
+				Already have an account?
+				<UButton variant="link" size="sm" class="p-0 h-auto font-semibold" :padded="false" to="/login">
+					Sign in
 				</UButton>
 			</p>
 		</div>

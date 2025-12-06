@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, format } from "date-fns";
-// import { VisXYContainer, VisLine, VisAxis, VisArea, VisCrosshair, VisTooltip } from "@unovis/vue";
+import { VisXYContainer, VisLine, VisAxis, VisArea, VisCrosshair, VisTooltip } from "@unovis/vue";
 import type { Period, Range } from "~/types";
 
 const cardRef = useTemplateRef<HTMLElement | null>("cardRef");
@@ -72,7 +72,7 @@ const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amo
 			</div>
 		</template>
 
-		<!-- <VisXYContainer
+		<VisXYContainer
 			:data="data"
 			:padding="{ top: 40 }"
 			class="h-96"
@@ -102,7 +102,7 @@ const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amo
 			/>
 
 			<VisTooltip />
-		</VisXYContainer> -->
+		</VisXYContainer>
 	</UCard>
 </template>
 
