@@ -19,7 +19,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
 		this.logger.log(`➡️  ${method} ${url}`);
 
-		// Log request body (optional - cẩn thận với sensitive data)
+		// Log request body (optional - be careful with sensitive data)
 		if (body && Object.keys(body).length > 0) {
 			this.logger.debug(`Body: ${JSON.stringify(body)}`);
 		}

@@ -39,10 +39,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		}
 
 		// Log error
-		this.logger.error(
-			`${request.method} ${request.url}`,
-			exception instanceof Error ? exception.stack : exception,
-		);
+		const isProduction = process.env.NODE_ENV === 'production';
+		const stackOrTrace =
+			!isProduction && exception instanceof Error ? exception.stack : undefined;
+		this.logger.error(`${request.method} ${request.url}`, stackOrTrace);
 
 		// Response format
 		const errorResponse = {

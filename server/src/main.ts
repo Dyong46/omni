@@ -1,24 +1,20 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
 	const configService = app.get(ConfigService);
 
-	const corsOrigin = configService.get<string>('app.corsOrigin') ?? '*';
+	// const corsOrigin = configService.get<string>('app.corsOrigin') ?? '*';
 
 	app.setGlobalPrefix('api');
 
-	app.enableCors({
-		origin: corsOrigin,
-		credentials: true,
-	});
+	// app.enableCors({
+	// 	origin: corsOrigin,
+	// 	credentials: true,
+	// });
 
 	// app.useGlobalPipes(
 	// 	new ValidationPipe({
