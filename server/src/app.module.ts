@@ -1,10 +1,40 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import databaseConfig from './config/database.config';
+import jwtConfig from './config/jwt.config';
+import appConfig from './config/app.config';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+	imports: [
+		ConfigModule.forRoot({
+			isGlobal: true,
+			load: [databaseConfig, jwtConfig, appConfig],
+			envFilePath: '.env',
+		}),
+
+		TypeOrmModule.forRootAsync({
+			imports: [ConfigModule],
+			useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
+				const dbConfig = configService.get<TypeOrmModuleOptions>('database');
+
+				if (!dbConfig) {
+					throw new Error('Missing database config');
+				}
+
+				return dbConfig;
+			},
+			inject: [ConfigService],
+		}),
+
+		AuthModule,
+		UsersModule,
+	],
+	controllers: [AppController],
+	providers: [AppService],
 })
 export class AppModule {}
