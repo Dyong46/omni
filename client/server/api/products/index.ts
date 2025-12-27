@@ -1,5 +1,3 @@
-import { getApiBaseURL } from "../utils/api";
-
 export default defineEventHandler(async (event) => {
 	const method = getMethod(event);
 	const query = getQuery(event);
