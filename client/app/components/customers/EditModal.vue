@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import type { Customer } from "~/types";
+
+const props = defineProps<{
+	customer: Customer | null
+}>();
 
 const schema = z.object({
 	name: z.string().min(2, "Too short").optional(),
@@ -11,7 +16,7 @@ const schema = z.object({
 const open = ref(false);
 const isLoading = ref(false);
 
-type Schema = z.output<typeof schema>
+type Schema = z.output<typeof schema>;
 
 const state = reactive<Partial<Schema>>({
 	name: undefined,
@@ -25,43 +30,61 @@ const emit = defineEmits<{
 	success: []
 }>();
 
+// Watch for customer changes and update state
+watch(() => props.customer, (newCustomer) => {
+	if (newCustomer && open.value) {
+		state.name = newCustomer.name;
+		state.email = newCustomer.email;
+		state.phone = newCustomer.phone;
+	}
+}, { immediate: true });
+
+watch(() => open.value, (isOpen) => {
+	if (isOpen && props.customer) {
+		state.name = props.customer.name;
+		state.email = props.customer.email;
+		state.phone = props.customer.phone;
+	}
+});
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+	if (!props.customer) return;
+
 	isLoading.value = true;
 	try {
-		await $fetch("/api/customers", {
-			method: "POST",
+		await $fetch(`/api/customers/${props.customer.id}`, {
+			method: "PUT",
 			body: event.data
 		});
 
 		toast.add({
 			title: "Success",
-			description: `Customer "${event.data.name || event.data.phone}" has been added`,
+			description: `Customer "${event.data.name || event.data.phone}" has been updated`,
 			color: "success"
 		});
-
-		// Reset form
-		state.name = undefined;
-		state.email = undefined;
-		state.phone = undefined;
 
 		open.value = false;
 		emit("success");
 	} catch (error) {
 		toast.add({
 			title: "Error",
-			description: "Failed to add customer",
+			description: "Failed to update customer",
 			color: "error"
 		});
 	} finally {
 		isLoading.value = false;
 	}
 }
+
+defineExpose({ open });
 </script>
 
 <template>
-	<UModal v-model:open="open" title="New customer" description="Add a new customer to the database">
-		<UButton label="New customer" icon="i-lucide-plus" />
-
+	<UModal
+		v-model:open="open"
+		:title="`Edit customer`"
+		description="Update customer information"
+	>
 		<template #body>
 			<UForm
 				:schema="schema"
@@ -72,12 +95,15 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 				<UFormField label="Name" placeholder="John Doe" name="name">
 					<UInput v-model="state.name" class="w-full" />
 				</UFormField>
+
 				<UFormField label="Email" placeholder="john.doe@example.com" name="email">
 					<UInput v-model="state.email" class="w-full" />
 				</UFormField>
+
 				<UFormField label="Phone" placeholder="0901234567" name="phone" required>
 					<UInput v-model="state.phone" class="w-full" />
 				</UFormField>
+
 				<div class="flex justify-end gap-2">
 					<UButton
 						label="Cancel"
@@ -86,7 +112,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 						@click="open = false"
 					/>
 					<UButton
-						label="Create"
+						label="Update"
 						color="primary"
 						variant="solid"
 						type="submit"

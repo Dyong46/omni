@@ -62,8 +62,7 @@ export interface Notification {
   date: string
 }
 
-export * from "./product";
-
+export * from "./product";export * from './customer'
 export type Period = "daily" | "weekly" | "monthly"
 
 export interface Range {
