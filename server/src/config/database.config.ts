@@ -67,7 +67,7 @@ export default registerAs('database', (): TypeOrmModuleOptions => {
 		username: process.env.DB_USERNAME || 'root',
 		password: dbPassword,
 		database: process.env.DB_DATABASE || 'omni_sales',
-		entities: [__dirname + '/**/*.entity{.ts,.js}'],
+		entities: [__dirname + '/../**/*.entity{.ts,.js}'],
 		synchronize,
 		// logging: nodeEnv === 'development',
 		// timezone: '+07:00', // Vietnam timezone
