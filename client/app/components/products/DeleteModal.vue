@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { Customer } from "~/types";
+import type { Product } from "~/types";
 
 const props = withDefaults(defineProps<{
 	count?: number
-	customer?: Customer | null
+	product?: Product | null
 }>(), {
 	count: 0
 });
@@ -18,17 +18,17 @@ const emit = defineEmits<{
 }>();
 
 async function onSubmit() {
-	if (!props.customer) return;
+	if (!props.product) return;
 
 	isLoading.value = true;
 	try {
-		await $fetch(`/api/customers/${props.customer.id}`, {
+		await $fetch(`/api/products/${props.product.id}`, {
 			method: "DELETE"
 		});
 
 		toast.add({
 			title: "Success",
-			description: `Customer "${props.customer.name || props.customer.phone}" has been deleted`,
+			description: `Product "${props.product.name}" has been deleted`,
 			color: "success"
 		});
 
@@ -37,7 +37,7 @@ async function onSubmit() {
 	} catch (error) {
 		toast.add({
 			title: "Error",
-			description: "Failed to delete customer",
+			description: "Failed to delete product",
 			color: "error"
 		});
 	} finally {
@@ -51,8 +51,8 @@ defineExpose({ open });
 <template>
 	<UModal
 		v-model:open="open"
-		:title="customer ? `Delete ${customer.name || customer.phone}` : `Delete ${count} customer${count > 1 ? 's' : ''}`"
-		:description="customer ? 'Are you sure you want to delete this customer? This action cannot be undone.' : 'Are you sure you want to delete these customers? This action cannot be undone.'"
+		:title="product ? `Delete ${product.name}` : `Delete ${count} product${count > 1 ? 's' : ''}`"
+		:description="product ? 'Are you sure you want to delete this product? This action cannot be undone.' : 'Are you sure you want to delete these products? This action cannot be undone.'"
 	>
 		<slot />
 

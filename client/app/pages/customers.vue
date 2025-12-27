@@ -3,11 +3,9 @@ import type { TableColumn } from "@nuxt/ui";
 import { upperFirst } from "scule";
 import { getPaginationRowModel } from "@tanstack/table-core";
 import type { Row } from "@tanstack/table-core";
-import type { User } from "~/types";
+import type { Customer } from "~/types";
 
-const UAvatar = resolveComponent("UAvatar");
 const UButton = resolveComponent("UButton");
-const UBadge = resolveComponent("UBadge");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
 const UCheckbox = resolveComponent("UCheckbox");
 
@@ -15,17 +13,26 @@ const toast = useToast();
 const table = useTemplateRef("table");
 
 const columnFilters = ref([{
-	id: "email",
+	id: "name",
 	value: ""
 }]);
 const columnVisibility = ref();
-const rowSelection = ref({ 1: true });
+const rowSelection = ref({});
 
-const { data, status } = await useFetch<User[]>("/api/customers", {
-	lazy: true
+const searchQuery = ref("");
+const selectedCustomer = ref<Customer | null>(null);
+const editModalRef = ref();
+const deleteModalRef = ref();
+
+const { data, status, refresh } = await useFetch<Customer[]>("/api/customers", {
+	lazy: true,
+	watch: [searchQuery],
+	query: computed(() => ({
+		q: searchQuery.value || undefined
+	}))
 });
 
-function getRowItems(row: Row<User>) {
+function getRowItems(row: Row<Customer>) {
 	return [
 		{
 			type: "label",
@@ -43,15 +50,16 @@ function getRowItems(row: Row<User>) {
 			}
 		},
 		{
-			type: "separator"
-		},
-		{
-			label: "View customer details",
-			icon: "i-lucide-list"
-		},
-		{
-			label: "View customer payments",
-			icon: "i-lucide-wallet"
+			label: "Edit customer",
+			icon: "i-lucide-pencil",
+			onSelect() {
+				selectedCustomer.value = row.original;
+				nextTick(() => {
+					if (editModalRef.value) {
+						editModalRef.value.open = true;
+					}
+				});
+			}
 		},
 		{
 			type: "separator"
@@ -61,16 +69,18 @@ function getRowItems(row: Row<User>) {
 			icon: "i-lucide-trash",
 			color: "error",
 			onSelect() {
-				toast.add({
-					title: "Customer deleted",
-					description: "The customer has been deleted."
+				selectedCustomer.value = row.original;
+				nextTick(() => {
+					if (deleteModalRef.value) {
+						deleteModalRef.value.open = true;
+					}
 				});
 			}
 		}
 	];
 }
 
-const columns: TableColumn<User>[] = [
+const columns: TableColumn<Customer>[] = [
 	{
 		id: "select",
 		header: ({ table }) =>
@@ -98,13 +108,16 @@ const columns: TableColumn<User>[] = [
 		header: "Name",
 		cell: ({ row }) => {
 			return h("div", { class: "flex items-center gap-3" }, [
-				h(UAvatar, {
-					...row.original.avatar,
-					size: "lg"
-				}),
+				h("div", {
+					class: "w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center"
+				}, [
+					h("span", { class: "text-primary font-medium" }, 
+						row.original.name?.charAt(0).toUpperCase() || "?"
+					)
+				]),
 				h("div", undefined, [
-					h("p", { class: "font-medium text-highlighted" }, row.original.name),
-					h("p", { class: "" }, `@${row.original.name}`)
+					h("p", { class: "font-medium text-highlighted" }, row.original.name || "—"),
+					h("p", { class: "text-sm text-muted" }, row.original.phone)
 				])
 			]);
 		}
@@ -126,28 +139,12 @@ const columns: TableColumn<User>[] = [
 				class: "-mx-2.5",
 				onClick: () => column.toggleSorting(column.getIsSorted() === "asc")
 			});
-		}
+		},
+		cell: ({ row }) => row.original.email || "—"
 	},
 	{
-		accessorKey: "location",
-		header: "Location",
-		cell: ({ row }) => row.original.location
-	},
-	{
-		accessorKey: "status",
-		header: "Status",
-		filterFn: "equals",
-		cell: ({ row }) => {
-			const color = {
-				subscribed: "success" as const,
-				unsubscribed: "error" as const,
-				bounced: "warning" as const
-			}[row.original.status];
-
-			return h(UBadge, { class: "capitalize", variant: "subtle", color }, () =>
-				row.original.status
-			);
-		}
+		accessorKey: "phone",
+		header: "Phone"
 	},
 	{
 		id: "actions",
@@ -176,26 +173,15 @@ const columns: TableColumn<User>[] = [
 	}
 ];
 
-const statusFilter = ref("all");
-
-watch(() => statusFilter.value, (newVal) => {
-	if (!table?.value?.tableApi) return;
-
-	const statusColumn = table.value.tableApi.getColumn("status");
-
-	if (!statusColumn) return;
-
-	if (newVal === "all") {
-		statusColumn.setFilterValue(undefined);
-	} else {
-		statusColumn.setFilterValue(newVal);
-	}
-});
-
 const pagination = ref({
 	pageIndex: 0,
 	pageSize: 10
 });
+
+function handleSuccess() {
+	refresh();
+	selectedCustomer.value = null;
+}
 
 </script>
 
@@ -216,15 +202,19 @@ const pagination = ref({
 		<template #body>
 			<div class="flex flex-wrap items-center justify-between gap-1.5">
 				<UInput
-					:model-value="(table?.tableApi?.getColumn('email')?.getFilterValue() as string)"
+					v-model="searchQuery"
 					class="max-w-sm"
 					icon="i-lucide-search"
-					placeholder="Filter emails..."
-					@update:model-value="table?.tableApi?.getColumn('email')?.setFilterValue($event)"
+					placeholder="Search customers..."
 				/>
 
 				<div class="flex flex-wrap items-center gap-1.5">
-					<CustomersDeleteModal :count="table?.tableApi?.getFilteredSelectedRowModel().rows.length">
+					<CustomersDeleteModal
+						ref="deleteModalRef"
+						:count="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
+						:customer="selectedCustomer"
+						@success="handleSuccess"
+					>
 						<UButton
 							v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
 							label="Delete"
@@ -240,18 +230,6 @@ const pagination = ref({
 						</UButton>
 					</CustomersDeleteModal>
 
-					<USelect
-						v-model="statusFilter"
-						:items="[
-							{ label: 'All', value: 'all' },
-							{ label: 'Subscribed', value: 'subscribed' },
-							{ label: 'Unsubscribed', value: 'unsubscribed' },
-							{ label: 'Bounced', value: 'bounced' }
-						]"
-						:ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
-						placeholder="Filter status"
-						class="min-w-28"
-					/>
 					<UDropdownMenu
 						:items="
 							table?.tableApi
@@ -319,6 +297,13 @@ const pagination = ref({
 					/>
 				</div>
 			</div>
+
+			<!-- Edit Modal -->
+			<CustomersEditModal
+				ref="editModalRef"
+				:customer="selectedCustomer"
+				@success="handleSuccess"
+			/>
 		</template>
 	</UDashboardPanel>
 </template>
