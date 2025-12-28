@@ -16,7 +16,7 @@ import { User } from '../users/entities/user.entity';
 				return {
 					secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
 					signOptions: {
-						expiresIn: expiresIn as any,
+						expiresIn: expiresIn as unknown as number,
 					},
 				};
 			},
