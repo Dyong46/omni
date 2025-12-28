@@ -68,6 +68,16 @@ CREATE TABLE order_items (
              ON DELETE RESTRICT
 );
 
+CREATE TABLE app_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    `key` VARCHAR(100) NOT NULL UNIQUE,
+    `value` TEXT NOT NULL,
+    category VARCHAR(50),
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 # Import data
 INSERT INTO categories (id, name, parent_id) VALUES
     (1, 'Electronics', NULL),
