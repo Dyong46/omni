@@ -30,17 +30,31 @@ const selectedIds = computed(() => {
 	return rows ? rows.map((r: any) => r.original.id) : [];
 });
 
-// Fetch products data
-const { data, status, refresh } = await useFetch<Product[]>("/api/products", {
-	lazy: true,
-	watch: [searchQuery],
-	query: computed(() => ({
-		q: searchQuery.value || undefined
-	}))
-});
+const categoryFilter = ref<number | 'all'>('all');
 
 // Fetch categories for filtering
 const { data: categories } = await useFetch<Category[]>("/api/categories");
+
+const categoryItems = computed(() => {
+	if (!categories.value) return [{ label: "All", value: 'all' }];
+	return [
+		{ label: "All", value: 'all' },
+		...categories.value.map(cat => ({
+			label: cat.name,
+			value: cat.id
+		}))
+	];
+});
+
+// Fetch products data (filtered by search and category)
+const { data, status, refresh } = await useFetch<Product[]>("/api/products", {
+	lazy: true,
+	watch: [searchQuery, categoryFilter],
+	query: computed(() => ({
+		q: searchQuery.value || undefined,
+		categoryId: categoryFilter.value === 'all' ? undefined : categoryFilter.value
+	}))
+});
 
 function formatPrice(price: number) {
 	return new Intl.NumberFormat("vi-VN", {
@@ -237,37 +251,14 @@ const columns: TableColumn<Product>[] = [
 	}
 ];
 
-const categoryFilter = ref("all");
 
-watch(() => categoryFilter.value, (newVal) => {
-	if (!table?.value?.tableApi) return;
-
-	const categoryColumn = table.value.tableApi.getColumn("category.name");
-
-	if (!categoryColumn) return;
-
-	if (newVal === "all") {
-		categoryColumn.setFilterValue(undefined);
-	} else {
-		categoryColumn.setFilterValue(newVal);
-	}
-});
 
 const pagination = ref({
 	pageIndex: 0,
 	pageSize: 10
 });
 
-const categoryItems = computed(() => {
-	if (!categories.value) return [{ label: "All", value: "all" }];
-	return [
-		{ label: "All", value: "all" },
-		...categories.value.map(cat => ({
-			label: cat.name,
-			value: cat.name
-		}))
-	];
-});
+
 
 function handleSuccess() {
 	refresh();
