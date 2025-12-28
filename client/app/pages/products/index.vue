@@ -25,6 +25,11 @@ const selectedProduct = ref<Product | null>(null);
 const editModalRef = ref();
 const deleteModalRef = ref();
 
+const selectedIds = computed(() => {
+	const rows = table?.value?.tableApi?.getFilteredSelectedRowModel()?.rows;
+	return rows ? rows.map((r: any) => r.original.id) : [];
+});
+
 // Fetch products data
 const { data, status, refresh } = await useFetch<Product[]>("/api/products", {
 	lazy: true,
@@ -267,6 +272,7 @@ const categoryItems = computed(() => {
 function handleSuccess() {
 	refresh();
 	selectedProduct.value = null;
+	rowSelection.value = {};
 }
 </script>
 
@@ -298,6 +304,7 @@ function handleSuccess() {
 						ref="deleteModalRef"
 						:count="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
 						:product="selectedProduct"
+						:selected-ids="selectedIds"
 						@success="handleSuccess"
 					>
 						<UButton

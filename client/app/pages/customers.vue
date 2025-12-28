@@ -24,6 +24,11 @@ const selectedCustomer = ref<Customer | null>(null);
 const editModalRef = ref();
 const deleteModalRef = ref();
 
+const selectedIds = computed(() => {
+	const rows = table?.value?.tableApi?.getFilteredSelectedRowModel()?.rows;
+	return rows ? rows.map((r: any) => r.original.id) : [];
+});
+
 const { data, status, refresh } = await useFetch<Customer[]>("/api/customers", {
 	lazy: true,
 	watch: [searchQuery],
@@ -181,6 +186,7 @@ const pagination = ref({
 function handleSuccess() {
 	refresh();
 	selectedCustomer.value = null;
+	rowSelection.value = {};
 }
 
 </script>
@@ -213,6 +219,7 @@ function handleSuccess() {
 						ref="deleteModalRef"
 						:count="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
 						:customer="selectedCustomer"
+						:selected-ids="selectedIds"
 						@success="handleSuccess"
 					>
 						<UButton

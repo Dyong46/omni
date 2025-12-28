@@ -4,6 +4,7 @@ import type { Customer } from "~/types";
 const props = withDefaults(defineProps<{
 	count?: number
 	customer?: Customer | null
+	selectedIds?: number[]
 }>(), {
 	count: 0
 });
@@ -18,26 +19,48 @@ const emit = defineEmits<{
 }>();
 
 async function onSubmit() {
-	if (!props.customer) return;
-
 	isLoading.value = true;
-	try {
-		await $fetch(`/api/customers/${props.customer.id}`, {
-			method: "DELETE"
-		});
 
-		toast.add({
-			title: "Success",
-			description: `Customer "${props.customer.name || props.customer.phone}" has been deleted`,
-			color: "success"
-		});
+	try {
+		if (props.selectedIds && props.selectedIds.length) {
+			const ids = props.selectedIds;
+			await Promise.all(
+				ids.map((id) =>
+					$fetch(`/api/customers/${id}`, {
+						method: "DELETE"
+					})
+				)
+			);
+
+			toast.add({
+				title: "Success",
+				description: `${ids.length} customer${ids.length > 1 ? 's' : ''} have been deleted`,
+				color: "success"
+			});
+		} else if (props.customer) {
+			await $fetch(`/api/customers/${props.customer.id}`, {
+				method: "DELETE"
+			});
+
+			toast.add({
+				title: "Success",
+				description: `Customer "${props.customer.name || props.customer.phone}" has been deleted`,
+				color: "success"
+			});
+		} else {
+			toast.add({
+				title: "Info",
+				description: "No customer selected",
+				color: "info"
+			});
+		}
 
 		open.value = false;
 		emit("success");
 	} catch (error) {
 		toast.add({
 			title: "Error",
-			description: "Failed to delete customer",
+			description: "Failed to delete customer(s)",
 			color: "error"
 		});
 	} finally {
