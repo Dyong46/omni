@@ -8,6 +8,7 @@ import {
 	Delete,
 	ParseIntPipe,
 	Query,
+	UseGuards,
 } from '@nestjs/common';
 import {
 	ApiTags,
@@ -16,13 +17,17 @@ import {
 	ApiParam,
 	ApiBody,
 	ApiQuery,
+	ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AppConfigService } from './app-config.service';
 import { CreateAppConfigDto } from './dto/create-app-config.dto';
 import { UpdateAppConfigDto } from './dto/update-app-config.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('App Config')
 @Controller('app-config')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class AppConfigController {
 	constructor(private readonly appConfigService: AppConfigService) {}
 

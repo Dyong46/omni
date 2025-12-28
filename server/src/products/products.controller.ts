@@ -8,6 +8,7 @@ import {
 	Delete,
 	ParseIntPipe,
 	Query,
+	UseGuards,
 } from '@nestjs/common';
 import {
 	ApiTags,
@@ -16,13 +17,17 @@ import {
 	ApiParam,
 	ApiBody,
 	ApiQuery,
+	ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Products')
 @Controller('products')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class ProductsController {
 	constructor(private readonly productsService: ProductsService) {}
 

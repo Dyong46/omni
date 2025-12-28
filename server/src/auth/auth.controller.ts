@@ -9,6 +9,7 @@ import {
 	ParseIntPipe,
 	HttpCode,
 	HttpStatus,
+	UseGuards,
 } from '@nestjs/common';
 import {
 	ApiTags,
@@ -16,20 +17,26 @@ import {
 	ApiResponse,
 	ApiBody,
 	ApiParam,
+	ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Public } from './decorators/public.decorator';
 
 @ApiTags('Authentication & User Management')
 @Controller('auth')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
 
 	/**
 	 * Login
 	 */
+	@Public()
 	@Post('login')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
@@ -82,6 +89,7 @@ export class AuthController {
 	/**
 	 * Register new user
 	 */
+	@Public()
 	@Post('register')
 	@ApiOperation({
 		summary: 'Register new account',
