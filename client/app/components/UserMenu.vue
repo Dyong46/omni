@@ -43,17 +43,28 @@ defineProps<{
 
 const colorMode = useColorMode();
 const appConfig = useAppConfig();
+const authStore = useAuthStore();
+const router = useRouter();
 
 const colors = ["red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"];
 const neutrals = ["slate", "gray", "zinc", "neutral", "stone"];
 
-const user = ref({
-	name: "Benjamin Canac",
-	avatar: {
-		src: "https://github.com/benjamincanac.png",
-		alt: "Benjamin Canac"
-	}
+const user = computed(() => {
+	const currentUser = authStore.currentUser;
+
+	return {
+		name: currentUser?.username || "User",
+		avatar: {
+			src: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser?.username}`,
+			alt: currentUser?.username || "User"
+		}
+	};
 });
+
+const handleLogout = async () => {
+	authStore.logout();
+	await router.push("/login");
+};
 
 const items = computed<DropdownMenuItem[][]>(() => ([
 	[{
@@ -141,7 +152,8 @@ const items = computed<DropdownMenuItem[][]>(() => ([
 	}],
 	[{
 		label: "Log out",
-		icon: "i-lucide-log-out"
+		icon: "i-lucide-log-out",
+		onSelect: handleLogout
 	}]]));
 
 </script>
