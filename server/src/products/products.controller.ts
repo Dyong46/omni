@@ -241,6 +241,25 @@ export class ProductsController {
 	}
 
 	/**
+	 * Update product price
+	 */
+	@Put(':id/price')
+	@ApiOperation({
+		summary: 'Update product price',
+		description: 'Set the current price for a product',
+	})
+	@ApiParam({ name: 'id', description: 'Product ID', example: 1 })
+	@ApiBody({
+		description: 'Price payload',
+		schema: { example: { price: 32000000 } },
+	})
+	@ApiResponse({ status: 200, description: 'Price updated successfully' })
+	@ApiResponse({ status: 404, description: 'Product not found' })
+	updatePrice(@Param('id', ParseIntPipe) id: number, @Body('price', new ParseIntPipe()) price: number) {
+		return this.productsService.updatePrice(id, price);
+	}
+
+	/**
 	 * Get products by category
 	 */
 	@Get('category/:categoryId')

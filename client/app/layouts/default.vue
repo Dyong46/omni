@@ -73,6 +73,12 @@ const links = [
 				open.value = false;
 			}
 		}, {
+			label: "New Order",
+			to: "/orders/new-order",
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
 			label: "Draft Orders",
 			to: "/draft-orders",
 			onSelect: () => {

@@ -12,6 +12,7 @@ const UCheckbox = resolveComponent("UCheckbox");
 
 const toast = useToast();
 const table = useTemplateRef("table");
+const router = useRouter();
 
 const columnFilters = ref([{
 	id: "name",
@@ -265,6 +266,10 @@ function handleSuccess() {
 	selectedProduct.value = null;
 	rowSelection.value = {};
 }
+
+function goCategories() {
+	router.push('/catergories');
+}
 </script>
 
 <template>
@@ -276,7 +281,17 @@ function handleSuccess() {
 				</template>
 
 				<template #right>
-					<ProductsAddModal @success="handleSuccess" />
+					<div class="flex items-center gap-2">
+						<UButton
+							label="New Categories"
+							color="neutral"
+							variant="outline"
+							icon="i-lucide-folder-plus"
+							@click="goCategories"
+						/>
+
+						<ProductsAddModal @success="handleSuccess" />
+					</div>
 				</template>
 			</UDashboardNavbar>
 		</template>
