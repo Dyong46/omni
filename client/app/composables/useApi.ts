@@ -7,6 +7,8 @@ export const useApi = <T>(
 ) => {
 	const config = useRuntimeConfig();
 	const authStore = useAuthStore();
+	const toast = useToast();
+	const router = useRouter();
 
 	// Get token from store
 	const token = authStore.getToken;
@@ -25,7 +27,18 @@ export const useApi = <T>(
 			// If 401, logout and redirect to login
 			if (response.status === 401) {
 				authStore.logout();
-				navigateTo("/login");
+				
+				toast.add({
+					title: "Session Expired",
+					description: "Your session has expired. Please login again.",
+					color: "error",
+					icon: "i-lucide-alert-circle"
+				});
+				
+				// Only redirect if not already on login page
+				if (router.currentRoute.value.path !== "/login") {
+					router.push("/login");
+				}
 			}
 		}
 	});

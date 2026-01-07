@@ -1,29 +1,28 @@
 export default defineEventHandler(async (event) => {
 	const method = getMethod(event);
 	const id = getRouterParam(event, "id");
-	const baseURL = getApiBaseURL();
-	const headers = getAuthHeaders(event);
 
 	// GET single customer
 	if (method === "GET") {
-		return await $fetch(`${baseURL}/customer/${id}`, { headers });
+		return await apiCall(event, `/customer/${id}`);
 	}
 
 	// PUT - Update customer
 	if (method === "PUT") {
 		const body = await readBody(event);
-		return await $fetch(`${baseURL}/customer/${id}`, {
+		return await apiCall(event, `/customer/${id}`, {
 			method: "PUT",
-			body,
-			headers
+			body: JSON.stringify(body),
+			headers: {
+				"Content-Type": "application/json"
+			}
 		});
 	}
 
 	// DELETE customer
 	if (method === "DELETE") {
-		return await $fetch(`${baseURL}/customer/${id}`, {
-			method: "DELETE",
-			headers
+		return await apiCall(event, `/customer/${id}`, {
+			method: "DELETE"
 		});
 	}
 

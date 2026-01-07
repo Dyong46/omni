@@ -1,18 +1,18 @@
-import { getApiBaseURL, getAuthHeaders } from "~~/server/utils/api";
+import { apiCall } from "~~/server/utils/api";
 
 export default defineEventHandler(async (event) => {
 	const method = getMethod(event);
 	const id = getRouterParam(event, "id");
-	const baseURL = getApiBaseURL();
-	const headers = getAuthHeaders(event);
 
 	if (method === "PUT") {
 		const body = await readBody(event);
 
-		return await $fetch(`${baseURL}/products/${id}/price`, {
+		return await apiCall(event, `/products/${id}/price`, {
 			method: "PUT",
-			body,
-			headers
+			body: JSON.stringify(body),
+			headers: {
+				"Content-Type": "application/json"
+			}
 		});
 	}
 

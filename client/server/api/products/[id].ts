@@ -1,30 +1,29 @@
 export default defineEventHandler(async (event) => {
 	const method = getMethod(event);
 	const id = getRouterParam(event, "id");
-	const baseURL = getApiBaseURL();
-	const headers = getAuthHeaders(event);
 
 	// GET single product
 	if (method === "GET") {
-		return await $fetch(`${baseURL}/products/${id}`, { headers });
+		return await apiCall(event, `/products/${id}`);
 	}
 
 	// PUT - Update product
 	if (method === "PUT") {
 		const body = await readBody(event);
 
-		return await $fetch(`${baseURL}/products/${id}`, {
+		return await apiCall(event, `/products/${id}`, {
 			method: "PUT",
-			body,
-			headers
+			body: JSON.stringify(body),
+			headers: {
+				"Content-Type": "application/json"
+			}
 		});
 	}
 
 	// DELETE product
 	if (method === "DELETE") {
-		return await $fetch(`${baseURL}/products/${id}`, {
-			method: "DELETE",
-			headers
+		return await apiCall(event, `/products/${id}`, {
+			method: "DELETE"
 		});
 	}
 

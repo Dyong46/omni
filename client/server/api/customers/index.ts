@@ -1,26 +1,26 @@
 export default defineEventHandler(async (event) => {
 	const method = getMethod(event);
 	const query = getQuery(event);
-	const baseURL = getApiBaseURL();
-	const headers = getAuthHeaders(event);
 
 	// GET all customers or search
 	if (method === "GET") {
 		if (query.q) {
 			// Search functionality
-			return await $fetch(`${baseURL}/customer/search?q=${query.q}`, { headers });
+			return await apiCall(event, `/customer/search?q=${query.q}`);
 		}
 
-		return await $fetch(`${baseURL}/customer`, { headers });
+		return await apiCall(event, "/customer");
 	}
 
 	// POST - Create new customer
 	if (method === "POST") {
 		const body = await readBody(event);
-		return await $fetch(`${baseURL}/customer`, {
+		return await apiCall(event, "/customer", {
 			method: "POST",
-			body,
-			headers
+			body: JSON.stringify(body),
+			headers: {
+				"Content-Type": "application/json"
+			}
 		});
 	}
 

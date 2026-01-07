@@ -26,3 +26,40 @@ export function getAuthHeaders(event: H3Event): Record<string, string> {
 
 	return headers;
 }
+
+/**
+ * Wrapper for API calls that handles 401 errors
+ */
+export async function apiCall<T>(
+	event: H3Event,
+	url: string,
+	options?: RequestInit
+): Promise<T> {
+	const baseURL = getApiBaseURL();
+	const headers = getAuthHeaders(event);
+
+	try {
+		return await $fetch<T>(`${baseURL}${url}`, {
+			...options,
+			headers: {
+				...options?.headers,
+				...headers
+			}
+		});
+	} catch (error: any) {
+		// If 401, clear the auth cookie
+		if (error?.response?.status === 401 || error?.statusCode === 401) {
+			setCookie(event, "auth_token", "", {
+				maxAge: -1, // Delete cookie
+				path: "/"
+			});
+			
+			throw createError({
+				statusCode: 401,
+				statusMessage: "Unauthorized - Token expired or invalid"
+			});
+		}
+		
+		throw error;
+	}
+}
