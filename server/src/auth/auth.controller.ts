@@ -23,6 +23,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
 
@@ -348,5 +349,63 @@ export class AuthController {
 	})
 	async deleteUser(@Param('id', ParseIntPipe) id: number) {
 		return this.authService.deleteUser(id);
+	}
+
+	/**
+	 * Change password
+	 */
+	@Put('change-password/:id')
+	@ApiOperation({
+		summary: 'Change password',
+		description:
+			'Change user password with current password verification (User can only change their own password)',
+	})
+	@ApiParam({
+		name: 'id',
+		description: 'ID of the user changing password',
+		example: 1,
+	})
+	@ApiBody({
+		type: ChangePasswordDto,
+		examples: {
+			changePassword: {
+				summary: 'Change password',
+				value: {
+					currentPassword: 'oldpassword123',
+					newPassword: 'newpassword123',
+				},
+			},
+		},
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Password changed successfully',
+		schema: {
+			example: {
+				id: 1,
+				username: 'admin',
+				role: 'admin',
+				createdAt: '2025-12-27T10:00:00.000Z',
+				updatedAt: '2025-12-27T14:00:00.000Z',
+			},
+		},
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Current password is incorrect',
+	})
+	@ApiResponse({
+		status: 404,
+		description: 'User not found',
+	})
+	@ApiResponse({
+		status: 409,
+		description: 'New password must be different from current password',
+	})
+	async changePassword(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() changePasswordDto: ChangePasswordDto,
+	) {
+		return this.authService.changePassword(id, changePasswordDto);
 	}
 }
