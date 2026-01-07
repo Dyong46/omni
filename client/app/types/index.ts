@@ -3,6 +3,27 @@ import type { AvatarProps } from "@nuxt/ui";
 export type UserStatus = "subscribed" | "unsubscribed" | "bounced"
 export type SaleStatus = "paid" | "failed" | "refunded"
 
+export interface ApiResponse<T> {
+	data?: T;
+	message?: string;
+	error?: string;
+}
+
+export interface AuthUser {
+	id: number;
+	username: string;
+	role: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface LoginResponse {
+	access_token: string;
+	user: AuthUser;
+}
+
+export interface RegisterResponse extends AuthUser {}
+
 export interface Order {
   id: string
   customer: User
@@ -62,6 +83,7 @@ export interface Notification {
   date: string
 }
 
+export * from "./product";export * from './customer'
 export type Period = "daily" | "weekly" | "monthly"
 
 export interface Range {
