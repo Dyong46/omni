@@ -49,14 +49,21 @@ const router = useRouter();
 const colors = ["red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"];
 const neutrals = ["slate", "gray", "zinc", "neutral", "stone"];
 
+const isHydrated = ref(false);
+
+onMounted(() => {
+	isHydrated.value = true;
+});
+
 const user = computed(() => {
-	const currentUser = authStore.currentUser;
+	const username = isHydrated.value && authStore.currentUser?.username ? authStore.currentUser.username : "User";
+	const safeSeed = encodeURIComponent(username);
 
 	return {
-		name: currentUser?.username || "User",
+		name: username,
 		avatar: {
-			src: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser?.username}`,
-			alt: currentUser?.username || "User"
+			src: `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeSeed}`,
+			alt: username
 		}
 	};
 });

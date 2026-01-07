@@ -28,10 +28,13 @@ export const useAuthStore = defineStore("auth", {
 				this.user = response.user;
 				this.isAuthenticated = true;
 
-				// Persist to localStorage
+				// Persist to localStorage and cookie
 				if (import.meta.client) {
 					localStorage.setItem("auth_token", response.access_token);
 					localStorage.setItem("auth_user", JSON.stringify(response.user));
+					
+					// Set cookie for server-side access
+					document.cookie = `auth_token=${response.access_token}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
 				}
 
 				return response;
@@ -73,10 +76,13 @@ export const useAuthStore = defineStore("auth", {
 			this.token = null;
 			this.isAuthenticated = false;
 
-			// Clear localStorage
+			// Clear localStorage and cookie
 			if (import.meta.client) {
 				localStorage.removeItem("auth_token");
 				localStorage.removeItem("auth_user");
+				
+				// Clear cookie
+				document.cookie = "auth_token=; path=/; max-age=0";
 			}
 		}
 	}

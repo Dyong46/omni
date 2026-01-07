@@ -2,6 +2,7 @@ export default defineEventHandler(async (event) => {
 	const method = getMethod(event);
 	const query = getQuery(event);
 	const baseURL = getApiBaseURL();
+	const headers = getAuthHeaders(event);
 
 	// GET all products or search
 	if (method === "GET") {
@@ -13,14 +14,14 @@ export default defineEventHandler(async (event) => {
 		
 		if (query.q) {
 			// Search functionality
-			return await $fetch(`${baseURL}/products/search?q=${query.q}`);
+			return await $fetch(`${baseURL}/products/search?q=${query.q}`, { headers });
 		}
 
 		const endpoint = queryParams.toString()
 			? `${baseURL}/products?${queryParams.toString()}`
 			: `${baseURL}/products`;
 		
-		return await $fetch(endpoint);
+		return await $fetch(endpoint, { headers });
 	}
 
 	// POST - Create new product
@@ -29,7 +30,8 @@ export default defineEventHandler(async (event) => {
 
 		return await $fetch(`${baseURL}/products`, {
 			method: "POST",
-			body
+			body,
+			headers
 		});
 	}
 

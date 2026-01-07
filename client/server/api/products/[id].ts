@@ -2,10 +2,11 @@ export default defineEventHandler(async (event) => {
 	const method = getMethod(event);
 	const id = getRouterParam(event, "id");
 	const baseURL = getApiBaseURL();
+	const headers = getAuthHeaders(event);
 
 	// GET single product
 	if (method === "GET") {
-		return await $fetch(`${baseURL}/products/${id}`);
+		return await $fetch(`${baseURL}/products/${id}`, { headers });
 	}
 
 	// PUT - Update product
@@ -14,14 +15,16 @@ export default defineEventHandler(async (event) => {
 
 		return await $fetch(`${baseURL}/products/${id}`, {
 			method: "PUT",
-			body
+			body,
+			headers
 		});
 	}
 
 	// DELETE product
 	if (method === "DELETE") {
 		return await $fetch(`${baseURL}/products/${id}`, {
-			method: "DELETE"
+			method: "DELETE",
+			headers
 		});
 	}
 

@@ -209,7 +209,7 @@ const pagination = ref({
 
 				<template #right>
 					<UButton label="Export data" icon="i-lucide-download" variant="outline" />
-					<UButton label="Create order" icon="i-lucide-plus" to="orders_new" />
+					<UButton label="Create order" icon="i-lucide-plus" to="orders/new-order" />
 				</template>
 			</UDashboardNavbar>
 		</template>

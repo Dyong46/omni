@@ -1,29 +1,65 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import type { Product } from "~/types/product";
+import type { Customer } from "~/types/customer";
 
 const toast = useToast();
 const router = useRouter();
 
-const form = ref({
-	channel: "",
-	customerName: "",
-	phone: "",
-	email: "",
-	shippingAddress: "",
-	status: "new",
-	total_amount: 0
+// State
+const selectedProducts = ref<Array<Product & { quantity: number; selectedVariant?: string }>>([]);
+const selectedCustomer = ref<Customer | null>(null);
+const shippingFee = ref(0);
+const orderInfo = ref({
+	channel: "offline",
+	warehouse: "main",
+	priceList: "default",
+	notes: ""
 });
-
 const submitting = ref(false);
 
+// Computed
+const subtotal = computed(() => {
+	return selectedProducts.value.reduce((sum, item) => sum + item.price * item.quantity, 0);
+});
+
+const total = computed(() => {
+	return subtotal.value + shippingFee.value;
+});
+
+// Submit order
 async function submit() {
+	if (selectedProducts.value.length === 0) {
+		toast.add({ title: "Error", description: "Please select at least one product", color: "error" });
+		return;
+	}
+	
+	if (!selectedCustomer.value) {
+		toast.add({ title: "Error", description: "Please select a customer", color: "error" });
+		return;
+	}
+	
 	submitting.value = true;
 	try {
-		await $fetch("/api/orders", { method: "POST", body: form.value });
-		toast.add({ title: "Order created", description: "New order created." });
+		const orderData = {
+			customerId: selectedCustomer.value.id,
+			channel: orderInfo.value.channel,
+			items: selectedProducts.value.map(p => ({
+				productId: p.id,
+				quantity: p.quantity,
+				price: p.price
+			})),
+			subtotal: subtotal.value,
+			shippingFee: shippingFee.value,
+			total: total.value,
+			notes: orderInfo.value.notes,
+			status: "new"
+		};
+		
+		await $fetch("/api/orders", { method: "POST", body: orderData });
+		toast.add({ title: "Success", description: "Order created successfully" });
 		router.push("/orders");
 	} catch (err: any) {
-		toast.add({ title: "Error creating order", description: err?.message || "Failed to create order", color: "error" });
+		toast.add({ title: "Error", description: err?.message || "Failed to create order", color: "error" });
 	} finally {
 		submitting.value = false;
 	}
@@ -33,7 +69,7 @@ async function submit() {
 <template>
 	<UDashboardPanel id="new-order">
 		<template #header>
-			<UDashboardNavbar title="New Order">
+			<UDashboardNavbar title="Create Order">
 				<template #leading>
 					<UDashboardSidebarCollapse />
 				</template>
@@ -44,67 +80,63 @@ async function submit() {
 		</template>
 
 		<template #body>
-			<div class="max-w-3xl">
-				<UCard>
-					<div class="p-6">
-						<form class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<div class="md:col-span-2">
-								<label class="block text-sm font-medium text-muted mb-1">Channel</label>
-								<USelect
-									v-model="form.channel"
-									:items="[
-										{ label: 'Shopee', value: 'shopee' },
-										{ label: 'TikTok', value: 'tiktok' },
-										{ label: 'Offline', value: 'offline' },
-										{ label: 'Website', value: 'website' }
-									]"
-								/>
-							</div>
+			
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+				<!-- Left Column -->
+				<div class="lg:col-span-2 space-y-6">
+					<!-- Product Card -->
+					<OrdersProductCard
+						:selected-products="selectedProducts"
+						@update:selected-products="selectedProducts = $event"
+					/>
+					
+					<!-- Payment Card -->
+					<OrdersPaymentCard
+						:subtotal="subtotal"
+						:shipping-fee="shippingFee"
+						:total="total"
+						@update:shipping-fee="shippingFee = $event"
+					/>
+				</div>
+				
+				<!-- Right Column -->
+				<div class="space-y-6">
+					<!-- Customer Card -->
+					<OrdersCustomerCard
+						:selected-customer="selectedCustomer"
+						@update:selected-customer="selectedCustomer = $event"
+					/>
+					
+					<!-- Order Info Card -->
+					<OrdersOrderInfoCard
+						:order-info="orderInfo"
+						@update:order-info="orderInfo = $event"
+					/>
 
-							<div>
-								<label class="block text-sm font-medium text-muted mb-1">Customer name</label>
-								<UInput v-model="form.customerName" />
-							</div>
-
-							<div>
-								<label class="block text-sm font-medium text-muted mb-1">Phone</label>
-								<UInput v-model="form.phone" />
-							</div>
-
-							<div>
-								<label class="block text-sm font-medium text-muted mb-1">Email</label>
-								<UInput v-model="form.email" type="email" />
-							</div>
-
-							<div class="md:col-span-2">
-								<label class="block text-sm font-medium text-muted mb-1">Shipping address</label>
-								<UTextarea v-model="form.shippingAddress" />
-							</div>
-
-							<div class="md:col-span-2">
-								<label class="block text-sm font-medium text-muted mb-1">Status</label>
-								<USelect
-									v-model="form.status"
-									:items="[
-										{ label: 'New', value: 'new' },
-										{ label: 'Undelivered', value: 'undelivered' },
-										{ label: 'Unpaid', value: 'unpaid' }
-									]"
-								/>
-							</div>
-
-							<div>
-								<label class="block text-sm font-medium text-muted mb-1">Total amount</label>
-								<UInput v-model="form.total_amount" type="number" />
-							</div>
-
-							<div class="md:col-span-2 flex justify-end mt-2">
-								<UButton :loading="submitting" label="Create order" color="success" @click.prevent="submit" />
-							</div>
-						</form>
+					<UCard>
+						<template #header>
+							<h3 class="font-semibold">Notes</h3>
+						</template>
+						<UTextarea
+							v-model="orderInfo.notes"
+							placeholder="Add any notes for this order..."
+							class="w-full"
+						/>
+					</UCard>
+					
+					<!-- Action Buttons -->
+					<div class="flex gap-3">
+						<UButton
+							label="Create Order"
+							color="primary"
+							block
+							:loading="submitting"
+							@click="submit"
+						/>
 					</div>
-				</UCard>
+				</div>
 			</div>
 		</template>
 	</UDashboardPanel>
 </template>
+
