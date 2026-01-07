@@ -196,6 +196,75 @@ export class ProductsController {
 	}
 
 	/**
+	 * Get inventories (products with their quantities)
+	 */
+	@Get('inventories')
+	@ApiOperation({
+		summary: 'Get product inventories',
+		description: 'Get products with current inventory quantities',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Successfully retrieved product inventories',
+		schema: {
+			example: [
+				{
+					id: 1,
+					name: 'iPhone 15 Pro',
+					quantity: 10,
+					image: 'iphone15pro.jpg',
+					categoryId: 3,
+					category: { id: 3, name: 'Mobile Phones' },
+				},
+			],
+		},
+	})
+	findInventories() {
+		return this.productsService.findAll();
+	}
+
+	/**
+	 * Update inventory quantity for a product
+	 */
+	@Put(':id/inventory')
+	@ApiOperation({
+		summary: 'Update product inventory',
+		description: 'Set the current inventory quantity for a product',
+	})
+	@ApiParam({ name: 'id', description: 'Product ID', example: 1 })
+	@ApiBody({
+		description: 'Quantity payload',
+		schema: { example: { quantity: 5 } },
+	})
+	@ApiResponse({ status: 200, description: 'Inventory updated successfully' })
+	@ApiResponse({ status: 404, description: 'Product not found' })
+	updateInventory(
+		@Param('id', ParseIntPipe) id: number,
+		@Body('quantity', new ParseIntPipe()) quantity: number,
+	) {
+		return this.productsService.updateQuantity(id, quantity);
+	}
+
+	/**
+	 * Update product price
+	 */
+	@Put(':id/price')
+	@ApiOperation({
+		summary: 'Update product price',
+		description: 'Set the current price for a product',
+	})
+	@ApiParam({ name: 'id', description: 'Product ID', example: 1 })
+	@ApiBody({
+		description: 'Price payload',
+		schema: { example: { price: 32000000 } },
+	})
+	@ApiResponse({ status: 200, description: 'Price updated successfully' })
+	@ApiResponse({ status: 404, description: 'Product not found' })
+	updatePrice(@Param('id', ParseIntPipe) id: number, @Body('price', new ParseIntPipe()) price: number) {
+		return this.productsService.updatePrice(id, price);
+	}
+
+	/**
 	 * Get products by category
 	 */
 	@Get('category/:categoryId')

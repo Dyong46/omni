@@ -106,6 +106,15 @@ export class ProductsService {
 	}
 
 	/**
+	 * Update product price
+	 */
+	async updatePrice(id: number, price: number) {
+		const product = await this.findOne(id);
+		product.price = price;
+		return this.productRepository.save(product);
+	}
+
+	/**
 	 * Delete product
 	 */
 	async remove(id: number) {

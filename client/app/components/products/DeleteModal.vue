@@ -4,6 +4,7 @@ import type { Product } from "~/types";
 const props = withDefaults(defineProps<{
 	count?: number
 	product?: Product | null
+	selectedIds?: number[]
 }>(), {
 	count: 0
 });
@@ -18,26 +19,48 @@ const emit = defineEmits<{
 }>();
 
 async function onSubmit() {
-	if (!props.product) return;
-
 	isLoading.value = true;
-	try {
-		await $fetch(`/api/products/${props.product.id}`, {
-			method: "DELETE"
-		});
 
-		toast.add({
-			title: "Success",
-			description: `Product "${props.product.name}" has been deleted`,
-			color: "success"
-		});
+	try {
+		if (props.selectedIds && props.selectedIds.length) {
+			const ids = props.selectedIds;
+			await Promise.all(
+				ids.map((id) =>
+					$fetch(`/api/products/${id}`, {
+						method: "DELETE"
+					})
+				)
+			);
+
+			toast.add({
+				title: "Success",
+				description: `${ids.length} product${ids.length > 1 ? 's' : ''} have been deleted`,
+				color: "success"
+			});
+		} else if (props.product) {
+			await $fetch(`/api/products/${props.product.id}`, {
+				method: "DELETE"
+			});
+
+			toast.add({
+				title: "Success",
+				description: `Product "${props.product.name}" has been deleted`,
+				color: "success"
+			});
+		} else {
+			toast.add({
+				title: "Info",
+				description: "No product selected",
+				color: "info"
+			});
+		}
 
 		open.value = false;
 		emit("success");
 	} catch (error) {
 		toast.add({
 			title: "Error",
-			description: "Failed to delete product",
+			description: "Failed to delete product(s)",
 			color: "error"
 		});
 	} finally {
