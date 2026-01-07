@@ -1,36 +1,91 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import type { AuthUser } from "~/types";
 
 const fileRef = ref<HTMLInputElement>();
 
 const profileSchema = z.object({
 	name: z.string().min(2, "Too short"),
 	email: z.string().email("Invalid email"),
-	username: z.string().min(2, "Too short"),
+	username: z.string().min(2, "Username must be at least 2 characters"),
 	avatar: z.string().optional(),
 	bio: z.string().optional()
 });
 
 type ProfileSchema = z.output<typeof profileSchema>
 
+const authStore = useAuthStore();
+const toast = useToast();
+const loading = ref(false);
+const loadingProfile = ref(true);
+
 const profile = reactive<Partial<ProfileSchema>>({
-	name: "Benjamin Canac",
-	email: "ben@nuxtlabs.com",
-	username: "benjamincanac",
+	name: "",
+	email: "",
+	username: "",
 	avatar: undefined,
 	bio: undefined
 });
-const toast = useToast();
+
+// Load profile on mount
+onMounted(async () => {
+	try {
+		loadingProfile.value = true;
+		const response = await $fetch<AuthUser>("/api/users/profile");
+		
+		profile.username = response.username;
+		profile.name = response.username;
+		profile.email = `${response.username}@omnisale.com`;
+		profile.bio = `Role: ${response.role}`;
+	} catch (error: unknown) {
+		const err = error as { data?: { message?: string } };
+		
+		toast.add({
+			title: "Error loading profile",
+			description: err.data?.message || "Failed to load profile",
+			color: "error",
+			icon: "i-lucide-alert-circle"
+		});
+	} finally {
+		loadingProfile.value = false;
+	}
+});
 
 async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
-	toast.add({
-		title: "Success",
-		description: "Your settings have been updated.",
-		icon: "i-lucide-check",
-		color: "success"
-	});
-	console.log(event.data);
+	loading.value = true;
+	
+	try {
+		const response = await $fetch<AuthUser>("/api/users/profile", {
+			method: "PUT",
+			body: { username: event.data.username }
+		});
+
+		if (authStore.user) {
+			authStore.user.username = response.username;
+			if (import.meta.client) {
+				localStorage.setItem("auth_user", JSON.stringify(authStore.user));
+			}
+		}
+
+		toast.add({
+			title: "Success",
+			description: "Your username has been updated successfully.",
+			icon: "i-lucide-check",
+			color: "success"
+		});
+	} catch (error: unknown) {
+		const err = error as { data?: { message?: string } };
+		
+		toast.add({
+			title: "Update failed",
+			description: err.data?.message || "Failed to update profile",
+			color: "error",
+			icon: "i-lucide-alert-circle"
+		});
+	} finally {
+		loading.value = false;
+	}
 }
 
 function onFileChange(e: Event) {
@@ -49,15 +104,20 @@ function onFileClick() {
 </script>
 
 <template>
+	<div v-if="loadingProfile" class="flex items-center justify-center min-h-[400px]">
+		<UIcon name="i-lucide-loader-2" class="size-8 animate-spin text-primary" />
+	</div>
+
 	<UForm
+		v-else
 		id="settings"
 		:schema="profileSchema"
 		:state="profile"
 		@submit="onSubmit"
 	>
 		<UPageCard
-			title="Profile"
-			description="These informations will be displayed publicly."
+			title="Profile Settings"
+			description="Update your username and other profile information."
 			variant="naked"
 			orientation="horizontal"
 			class="mb-4"
@@ -67,91 +127,90 @@ function onFileClick() {
 				label="Save changes"
 				color="neutral"
 				type="submit"
+				:loading="loading"
+				:disabled="loading"
 				class="w-fit lg:ms-auto"
 			/>
 		</UPageCard>
 
 		<UPageCard variant="subtle">
 			<UFormField
-				name="name"
-				label="Name"
-				description="Will appear on receipts, invoices, and other communication."
+				name="username"
+				label="Username"
+				description="Your unique username for logging in. This will be updated in the system."
 				required
+				class="flex max-sm:flex-col justify-between items-start gap-4"
+			>
+				<UInput
+					v-model="profile.username"
+					autocomplete="off"
+					:disabled="loading"
+					placeholder="Enter your username"
+				/>
+			</UFormField>
+			<USeparator />
+			<UFormField
+				name="name"
+				label="Display Name"
+				description="How your name appears throughout the system (display only)."
 				class="flex max-sm:flex-col justify-between items-start gap-4"
 			>
 				<UInput
 					v-model="profile.name"
 					autocomplete="off"
+					disabled
 				/>
 			</UFormField>
 			<USeparator />
 			<UFormField
 				name="email"
 				label="Email"
-				description="Used to sign in, for email receipts and product updates."
-				required
+				description="Email address for notifications (display only)."
 				class="flex max-sm:flex-col justify-between items-start gap-4"
 			>
 				<UInput
 					v-model="profile.email"
 					type="email"
 					autocomplete="off"
-				/>
-			</UFormField>
-			<USeparator />
-			<UFormField
-				name="username"
-				label="Username"
-				description="Your unique username for logging in and your profile URL."
-				required
-				class="flex max-sm:flex-col justify-between items-start gap-4"
-			>
-				<UInput
-					v-model="profile.username"
-					type="username"
-					autocomplete="off"
+					disabled
 				/>
 			</UFormField>
 			<USeparator />
 			<UFormField
 				name="avatar"
 				label="Avatar"
-				description="JPG, GIF or PNG. 1MB Max."
+				description="Profile picture (coming soon - display only)."
 				class="flex max-sm:flex-col justify-between sm:items-center gap-4"
 			>
 				<div class="flex flex-wrap items-center gap-3">
 					<UAvatar
 						:src="profile.avatar"
-						:alt="profile.name"
+						:alt="profile.username || 'User'"
 						size="lg"
+						:text="profile.username?.charAt(0).toUpperCase()"
 					/>
 					<UButton
 						label="Choose"
 						color="neutral"
-						@click="onFileClick"
+						disabled
 					/>
-					<input
-						ref="fileRef"
-						type="file"
-						class="hidden"
-						accept=".jpg, .jpeg, .png, .gif"
-						@change="onFileChange"
-					>
 				</div>
 			</UFormField>
 			<USeparator />
 			<UFormField
 				name="bio"
 				label="Bio"
-				description="Brief description for your profile. URLs are hyperlinked."
+				description="Brief description for your profile (display only)."
 				class="flex max-sm:flex-col justify-between items-start gap-4"
 				:ui="{ container: 'w-full' }"
 			>
 				<UTextarea
 					v-model="profile.bio"
-					:rows="5"
+					:rows="3"
 					autoresize
+					disabled
 					class="w-full"
+					placeholder="Your bio..."
 				/>
 			</UFormField>
 		</UPageCard>
