@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Customer } from "~/types";
+import customerService, { type Customer } from "~/services/customer.service";
 
 const props = withDefaults(defineProps<{
 	count?: number
@@ -25,11 +25,7 @@ async function onSubmit() {
 		if (props.selectedIds && props.selectedIds.length) {
 			const ids = props.selectedIds;
 			await Promise.all(
-				ids.map((id) =>
-					$fetch(`/api/customers/${id}`, {
-						method: "DELETE"
-					})
-				)
+				ids.map((id) => customerService.delete(id))
 			);
 
 			toast.add({
@@ -38,9 +34,7 @@ async function onSubmit() {
 				color: "success"
 			});
 		} else if (props.customer) {
-			await $fetch(`/api/customers/${props.customer.id}`, {
-				method: "DELETE"
-			});
+			await customerService.delete(props.customer.id);
 
 			toast.add({
 				title: "Success",
@@ -57,10 +51,10 @@ async function onSubmit() {
 
 		open.value = false;
 		emit("success");
-	} catch (error) {
+	} catch (error: any) {
 		toast.add({
 			title: "Error",
-			description: "Failed to delete customer(s)",
+			description: error.message || "Failed to delete customer(s)",
 			color: "error"
 		});
 	} finally {

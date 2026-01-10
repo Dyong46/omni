@@ -81,7 +81,7 @@ class ProductService {
    * Update a product
    */
   async update(id: number, data: UpdateProductDto): Promise<Product> {
-    return axios.patch(`${this.endpoint}/${id}`, data);
+    return axios.put(`${this.endpoint}/${id}`, data);
   }
 
   /**

@@ -3,7 +3,9 @@ import type { TableColumn } from "@nuxt/ui";
 import { upperFirst } from "scule";
 import { getPaginationRowModel } from "@tanstack/table-core";
 import type { Row } from "@tanstack/table-core";
-import type { Product, Category } from "~/types";
+import type { Product } from "~/types";
+import productService from "~/services/product.service";
+import categoryService, { type Category } from "~/services/category.service";
 
 const UButton = resolveComponent("UButton");
 const UBadge = resolveComponent("UBadge");
@@ -34,7 +36,19 @@ const selectedIds = computed(() => {
 const categoryFilter = ref<number | 'all'>('all');
 
 // Fetch categories for filtering
-const { data: categories } = await useFetch<Category[]>("/api/categories");
+const categories = ref<Category[]>([]);
+const loadingCategories = ref(true);
+
+onMounted(async () => {
+	loadingCategories.value = true;
+	try {
+		categories.value = await categoryService.getAll();
+	} catch (error) {
+		console.error('Failed to load categories:', error);
+	} finally {
+		loadingCategories.value = false;
+	}
+});
 
 const categoryItems = computed(() => {
 	if (!categories.value) return [{ label: "All", value: 'all' }];
@@ -47,15 +61,36 @@ const categoryItems = computed(() => {
 	];
 });
 
-// Fetch products data (filtered by search and category)
-const { data, status, refresh } = await useFetch<Product[]>("/api/products", {
-	lazy: true,
-	watch: [searchQuery, categoryFilter],
-	query: computed(() => ({
-		q: searchQuery.value || undefined,
-		categoryId: categoryFilter.value === 'all' ? undefined : categoryFilter.value
-	}))
+// Fetch products data
+const data = ref<Product[]>([]);
+const status = ref<'idle' | 'pending' | 'success' | 'error'>('idle');
+
+const loadProducts = async () => {
+	status.value = 'pending';
+	try {
+		const params: any = {};
+		if (searchQuery.value) params.q = searchQuery.value;
+		if (categoryFilter.value !== 'all') params.categoryId = categoryFilter.value;
+		
+		data.value = await productService.getAll(params);
+		status.value = 'success';
+	} catch (error) {
+		status.value = 'error';
+		console.error('Failed to load products:', error);
+	}
+};
+
+onMounted(() => {
+	loadProducts();
 });
+
+watch([searchQuery, categoryFilter], () => {
+	loadProducts();
+});
+
+const refresh = () => {
+	loadProducts();
+};
 
 function formatPrice(price: number) {
 	return new Intl.NumberFormat("vi-VN", {

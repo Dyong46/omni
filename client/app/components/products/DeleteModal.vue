@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Product } from "~/types";
+import productService from "~/services/product.service";
 
 const props = withDefaults(defineProps<{
 	count?: number
@@ -25,11 +26,7 @@ async function onSubmit() {
 		if (props.selectedIds && props.selectedIds.length) {
 			const ids = props.selectedIds;
 			await Promise.all(
-				ids.map((id) =>
-					$fetch(`/api/products/${id}`, {
-						method: "DELETE"
-					})
-				)
+				ids.map((id) => productService.delete(id))
 			);
 
 			toast.add({
@@ -38,9 +35,7 @@ async function onSubmit() {
 				color: "success"
 			});
 		} else if (props.product) {
-			await $fetch(`/api/products/${props.product.id}`, {
-				method: "DELETE"
-			});
+			await productService.delete(props.product.id);
 
 			toast.add({
 				title: "Success",
@@ -57,10 +52,10 @@ async function onSubmit() {
 
 		open.value = false;
 		emit("success");
-	} catch (error) {
+	} catch (error: any) {
 		toast.add({
 			title: "Error",
-			description: "Failed to delete product(s)",
+			description: error.message || "Failed to delete product(s)",
 			color: "error"
 		});
 	} finally {

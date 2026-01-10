@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import type { Product, Category } from "~/types";
+import type { Product } from "~/types";
+import productService from "~/services/product.service";
+import categoryService, { type Category } from "~/services/category.service";
 
 const props = defineProps<{
 	product: Product | null
@@ -29,7 +31,15 @@ const state = reactive<Partial<Schema>>({
 });
 
 // Fetch categories
-const { data: categories } = await useFetch<Category[]>("/api/categories");
+const categories = ref<Category[]>([]);
+
+onMounted(async () => {
+	try {
+		categories.value = await categoryService.getAll();
+	} catch (error) {
+		console.error('Failed to load categories:', error);
+	}
+});
 
 const categoryItems = computed(() => {
 	if (!categories.value) return [];
@@ -71,9 +81,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 	isLoading.value = true;
 	try {
-		await $fetch(`/api/products/${props.product.id}`, {
-			method: "PUT",
-			body: event.data
+		await productService.update(props.product.id, {
+			name: event.data.name,
+			price: event.data.price,
+			stock: event.data.quantity,
+			imageUrl: event.data.image,
+			categoryId: event.data.categoryId
 		});
 
 		toast.add({
@@ -84,10 +97,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 		open.value = false;
 		emit("success");
-	} catch (error) {
+	} catch (error: any) {
 		toast.add({
 			title: "Error",
-			description: "Failed to update product",
+			description: error.message || "Failed to update product",
 			color: "error"
 		});
 	} finally {

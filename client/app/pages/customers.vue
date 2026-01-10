@@ -3,7 +3,7 @@ import type { TableColumn } from "@nuxt/ui";
 import { upperFirst } from "scule";
 import { getPaginationRowModel } from "@tanstack/table-core";
 import type { Row } from "@tanstack/table-core";
-import type { Customer } from "~/types";
+import customerService, { type Customer } from "~/services/customer.service";
 
 const UButton = resolveComponent("UButton");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
@@ -26,16 +26,40 @@ const deleteModalRef = ref();
 
 const selectedIds = computed(() => {
 	const rows = table?.value?.tableApi?.getFilteredSelectedRowModel()?.rows;
+
 	return rows ? rows.map((r: any) => r.original.id) : [];
 });
 
-const { data, status, refresh } = await useFetch<Customer[]>("/api/customers", {
-	lazy: true,
-	watch: [searchQuery],
-	query: computed(() => ({
-		q: searchQuery.value || undefined
-	}))
+// Fetch customers data
+const data = ref<Customer[]>([]);
+const status = ref<"idle" | "pending" | "success" | "error">("idle");
+
+const loadCustomers = async () => {
+	status.value = "pending";
+	try {
+		const params: any = {};
+
+		if (searchQuery.value) params.q = searchQuery.value;
+		
+		data.value = await customerService.getAll(params);
+		status.value = "success";
+	} catch (error) {
+		status.value = "error";
+		console.error("Failed to load customers:", error);
+	}
+};
+
+onMounted(() => {
+	loadCustomers();
 });
+
+watch(searchQuery, () => {
+	loadCustomers();
+});
+
+const refresh = () => {
+	loadCustomers();
+};
 
 function getRowItems(row: Row<Customer>) {
 	return [
@@ -116,7 +140,7 @@ const columns: TableColumn<Customer>[] = [
 				h("div", {
 					class: "w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center"
 				}, [
-					h("span", { class: "text-primary font-medium" }, 
+					h("span", { class: "text-primary font-medium" },
 						row.original.name?.charAt(0).toUpperCase() || "?"
 					)
 				]),
@@ -200,7 +224,7 @@ function handleSuccess() {
 				</template>
 
 				<template #right>
-					<CustomersAddModal />
+					<CustomersAddModal @success="handleSuccess" />
 				</template>
 			</UDashboardNavbar>
 		</template>

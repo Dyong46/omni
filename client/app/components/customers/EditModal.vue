@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import type { Customer } from "~/types";
+import customerService, { type Customer } from "~/services/customer.service";
 
 const props = defineProps<{
 	customer: Customer | null
@@ -52,9 +52,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 	isLoading.value = true;
 	try {
-		await $fetch(`/api/customers/${props.customer.id}`, {
-			method: "PUT",
-			body: event.data
+		await customerService.update(props.customer.id, {
+			name: event.data.name,
+			email: event.data.email,
+			phone: event.data.phone
 		});
 
 		toast.add({
@@ -65,10 +66,10 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 		open.value = false;
 		emit("success");
-	} catch (error) {
+	} catch (error: any) {
 		toast.add({
 			title: "Error",
-			description: "Failed to update customer",
+			description: error.message || "Failed to update customer",
 			color: "error"
 		});
 	} finally {
