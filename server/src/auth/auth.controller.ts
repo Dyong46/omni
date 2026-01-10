@@ -10,6 +10,7 @@ import {
 	HttpCode,
 	HttpStatus,
 	UseGuards,
+	Patch,
 } from '@nestjs/common';
 import {
 	ApiTags,
@@ -26,6 +27,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { User } from '../users/entities/user.entity';
 
 @ApiTags('Authentication & User Management')
 @Controller('auth')
@@ -85,6 +88,69 @@ export class AuthController {
 	})
 	async login(@Body() loginDto: LoginDto) {
 		return this.authService.login(loginDto);
+	}
+
+	/**
+	 * Get current user profile
+	 */
+	@Get('profile')
+	@ApiOperation({
+		summary: 'Get current user profile',
+		description: 'Get authenticated user information from JWT token',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Profile retrieved successfully',
+		schema: {
+			example: {
+				id: 1,
+				username: 'admin',
+				role: 'admin',
+				createdAt: '2025-12-27T10:00:00.000Z',
+				updatedAt: '2025-12-27T10:00:00.000Z',
+			},
+		},
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized - Invalid or missing token',
+	})
+	async getProfile(@CurrentUser() user: User) {
+		return this.authService.getUserById(user.id);
+	}
+
+	/**
+	 * Update current user profile
+	 */
+	@Patch('profile')
+	@ApiOperation({
+		summary: 'Update current user profile',
+		description: 'Update authenticated user information',
+	})
+	@ApiBody({
+		type: UpdateUserDto,
+		examples: {
+			updateUsername: {
+				summary: 'Change username',
+				value: {
+					username: 'newusername',
+				},
+			},
+		},
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Profile updated successfully',
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized',
+	})
+	async updateProfile(
+		@CurrentUser() user: User,
+		@Body() updateUserDto: UpdateUserDto,
+	) {
+		return this.authService.updateUser(user.id, updateUserDto);
 	}
 
 	/**
@@ -354,7 +420,45 @@ export class AuthController {
 	/**
 	 * Change password
 	 */
-	@Put('change-password/:id')
+	@Post('change-password')
+	@ApiOperation({
+		summary: 'Change password',
+		description: 'Change current user password with old password verification',
+	})
+	@ApiBody({
+		type: ChangePasswordDto,
+		examples: {
+			changePassword: {
+				summary: 'Change password',
+				value: {
+					currentPassword: 'oldpassword123',
+					newPassword: 'newpassword123',
+				},
+			},
+		},
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Password changed successfully',
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Current password is incorrect',
+	})
+	async changePasswordCurrent(
+		@CurrentUser() user: User,
+		@Body() changePasswordDto: ChangePasswordDto,
+	) {
+		return this.authService.changePassword(user.id, changePasswordDto);
+	}
+
+	/**
+	 * Change password (Admin - by user ID)
+	 */
+	/**
+	 * Change password (Admin - by user ID)
+	 */
+	@Put('users/:id/change-password')
 	@ApiOperation({
 		summary: 'Change password',
 		description:

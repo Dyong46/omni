@@ -69,7 +69,7 @@ const user = computed(() => {
 });
 
 const handleLogout = async () => {
-	authStore.logout();
+	authStore.clearAuth();
 	await router.push("/login");
 };
 

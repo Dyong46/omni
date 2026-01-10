@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormError, FormSubmitEvent } from "@nuxt/ui";
+import authService from "~/services/auth.service";
 
 const passwordSchema = z.object({
 	current: z.string().min(6, "Must be at least 6 characters"),
@@ -31,13 +32,9 @@ async function onSubmit(event: FormSubmitEvent<PasswordSchema>) {
 	loading.value = true;
 
 	try {
-		// Send both current and new password for verification
-		await $fetch("/api/users/password", {
-			method: "PUT",
-			body: {
-				currentPassword: event.data.current,
-				newPassword: event.data.new
-			}
+		await authService.changePassword({
+			oldPassword: event.data.current,
+			newPassword: event.data.new
 		});
 
 		toast.add({
@@ -50,12 +47,10 @@ async function onSubmit(event: FormSubmitEvent<PasswordSchema>) {
 		// Reset form
 		password.current = undefined;
 		password.new = undefined;
-	} catch (error: unknown) {
-		const err = error as { data?: { message?: string } };
-
+	} catch (error: any) {
 		toast.add({
 			title: "Update failed",
-			description: err.data?.message || "Failed to update password",
+			description: error.message || "Failed to update password",
 			color: "error",
 			icon: "i-lucide-alert-circle"
 		});

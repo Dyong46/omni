@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import authService from "~/services/auth.service";
 
 const schema = z.object({
 	username: z.string().min(1, { message: "Username is required" }),
@@ -27,14 +28,18 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 	loading.value = true;
 
 	try {
-		await authStore.login({
+		// Call auth service directly
+		const response = await authService.login({
 			username: event.data.username,
 			password: event.data.password
 		});
 
+		// Update store with auth data
+		authStore.setAuth(response.access_token, response.user);
+
 		toast.add({
 			title: "Login successful",
-			description: `Welcome back, ${authStore.user?.username}!`,
+			description: `Welcome back, ${response.user.username}!`,
 			color: "success",
 			icon: "i-lucide-check-circle"
 		});
@@ -44,7 +49,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 	} catch (error: any) {
 		toast.add({
 			title: "Login failed",
-			description: error.data?.message || "Invalid username or password",
+			description: error.message || "Invalid username or password",
 			color: "error",
 			icon: "i-lucide-alert-circle"
 		});
@@ -86,7 +91,6 @@ useSeoMeta({
 								type="text"
 								placeholder="Enter your username"
 								icon="i-lucide-user"
-								size="lg"
 								:disabled="loading"
 							/>
 						</UFormField>
@@ -97,14 +101,12 @@ useSeoMeta({
 								type="password"
 								placeholder="Enter your password"
 								icon="i-lucide-lock"
-								size="lg"
 								:disabled="loading"
 							/>
 						</UFormField>
 
 						<UButton
 							type="submit"
-							size="lg"
 							block
 							:loading="loading"
 							:disabled="loading"

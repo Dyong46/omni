@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import type { AuthUser } from "~/types";
+import authService from "~/services/auth.service";
 
 const fileRef = ref<HTMLInputElement>();
 
@@ -32,18 +32,16 @@ const profile = reactive<Partial<ProfileSchema>>({
 onMounted(async () => {
 	try {
 		loadingProfile.value = true;
-		const response = await $fetch<AuthUser>("/api/users/profile");
+		const response = await authService.getProfile();
 		
 		profile.username = response.username;
 		profile.name = response.username;
 		profile.email = `${response.username}@omnisale.com`;
 		profile.bio = `Role: ${response.role}`;
-	} catch (error: unknown) {
-		const err = error as { data?: { message?: string } };
-		
+	} catch (error: any) {
 		toast.add({
 			title: "Error loading profile",
-			description: err.data?.message || "Failed to load profile",
+			description: error.message || "Failed to load profile",
 			color: "error",
 			icon: "i-lucide-alert-circle"
 		});
@@ -56,11 +54,11 @@ async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
 	loading.value = true;
 	
 	try {
-		const response = await $fetch<AuthUser>("/api/users/profile", {
-			method: "PUT",
-			body: { username: event.data.username }
+		const response = await authService.updateProfile({
+			username: event.data.username
 		});
 
+		// Update store with new user data
 		if (authStore.user) {
 			authStore.user.username = response.username;
 			if (import.meta.client) {
@@ -74,12 +72,10 @@ async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
 			icon: "i-lucide-check",
 			color: "success"
 		});
-	} catch (error: unknown) {
-		const err = error as { data?: { message?: string } };
-		
+	} catch (error: any) {
 		toast.add({
 			title: "Update failed",
-			description: err.data?.message || "Failed to update profile",
+			description: error.message || "Failed to update profile",
 			color: "error",
 			icon: "i-lucide-alert-circle"
 		});

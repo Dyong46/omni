@@ -6,7 +6,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	(e: "update:selectedCustomer", value: Customer | null): void;
+	"update:selectedCustomer": [value: Customer | null];
 }>();
 
 const toast = useToast();
@@ -90,67 +90,57 @@ async function createCustomer() {
 	</UCard>
 	
 	<!-- Create Customer Modal -->
-	<UModal v-model="showCreateCustomerModal">
+	<UModal
+		v-model:open="showCreateCustomerModal" 
+		title="Create New Customer"
+		description="Add a new customer to the system"
+	>
 		<template #body>
-			<UCard>
-				<template #header>
-					<div class="flex items-center justify-between">
-						<h3 class="text-lg font-semibold">Create New Customer</h3>
-						<UButton
-							icon="i-lucide-x"
-							color="primary"
-							variant="ghost"
-							@click="showCreateCustomerModal = false"
-						/>
-					</div>
-				</template>
-				
-				<div class="space-y-4">
-					<div>
-						<label class="block text-sm font-medium mb-2">Phone Number *</label>
-						<UInput
-							v-model="newCustomer.phone"
-							placeholder="Enter phone number"
-							size="lg"
-						/>
-					</div>
-					
-					<div>
-						<label class="block text-sm font-medium mb-2">Customer Name</label>
-						<UInput
-							v-model="newCustomer.name"
-							placeholder="Enter customer name"
-							size="lg"
-						/>
-					</div>
-					
-					<div>
-						<label class="block text-sm font-medium mb-2">Email</label>
-						<UInput
-							v-model="newCustomer.email"
-							type="email"
-							placeholder="Enter email"
-							size="lg"
-						/>
-					</div>
+			<div class="space-y-4">
+				<div>
+					<label class="block text-sm font-medium mb-2">Phone Number *</label>
+					<UInput
+						v-model="newCustomer.phone"
+						placeholder="Enter phone number"
+						size="lg"
+					/>
 				</div>
 				
-				<template #footer>
-					<div class="flex justify-end gap-3">
-						<UButton
-							label="Cancel"
-							variant="outline"
-							@click="showCreateCustomerModal = false"
-						/>
-						<UButton
-							label="Create Customer"
-							color="primary"
-							:disabled="!newCustomer.phone"
-							@click="createCustomer"
-						/>
-					</div>
-				</template>
-			</UCard>
+				<div>
+					<label class="block text-sm font-medium mb-2">Customer Name</label>
+					<UInput
+						v-model="newCustomer.name"
+						placeholder="Enter customer name"
+						size="lg"
+					/>
+				</div>
+				
+				<div>
+					<label class="block text-sm font-medium mb-2">Email</label>
+					<UInput
+						v-model="newCustomer.email"
+						type="email"
+						placeholder="Enter email"
+						size="lg"
+					/>
+				</div>
+			</div>
+		</template>
+		
+		<template #footer>
+			<div class="flex justify-end gap-3">
+				<UButton
+					label="Cancel"
+					variant="outline"
+					@click="showCreateCustomerModal = false"
+				/>
+				<UButton
+					label="Create Customer"
+					color="primary"
+					:disabled="!newCustomer.phone"
+					@click="createCustomer"
+				/>
+			</div>
 		</template>
 	</UModal>
 </template>
