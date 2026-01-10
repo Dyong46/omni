@@ -3,7 +3,7 @@ import type { TableColumn } from "@nuxt/ui";
 import { upperFirst } from "scule";
 import { getPaginationRowModel } from "@tanstack/table-core";
 import type { Row } from "@tanstack/table-core";
-import type { Order } from "~/types";
+import orderService, { type Order } from "~/services/order.service";
 
 const UAvatar = resolveComponent("UAvatar");
 const UButton = resolveComponent("UButton");
@@ -21,8 +21,23 @@ const columnFilters = ref([{
 const columnVisibility = ref();
 const rowSelection = ref({ 1: true });
 
-const { data, status } = await useFetch<Order[]>("/api/orders", {
-	lazy: true
+// Fetch orders data
+const data = ref<Order[]>([]);
+const status = ref<"idle" | "pending" | "success" | "error">("idle");
+
+const loadOrders = async () => {
+	status.value = "pending";
+	try {
+		data.value = await orderService.getAll();
+		status.value = "success";
+	} catch (error) {
+		status.value = "error";
+		console.error("Failed to load orders:", error);
+	}
+};
+
+onMounted(() => {
+	loadOrders();
 });
 
 function getRowItems(row: Row<Order>) {
