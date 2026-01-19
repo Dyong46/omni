@@ -5,6 +5,7 @@ import type { Row } from "@tanstack/table-core";
 import { ref, onMounted } from "vue";
 import productService, { type Product } from "~/services/product.service";
 import type { Ref } from "vue";
+import { formatCurrency } from "~/utils/formatters";
 
 const UButton = resolveComponent("UButton");
 const UBadge = resolveComponent("UBadge");
@@ -43,10 +44,6 @@ const loadProducts = async () => {
 const refresh = () => {
 	loadProducts();
 };
-
-function formatPrice(price: number) {
-	return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
-}
 
 function formatDate(value: string | Date | undefined | null) {
 	if (!value) return "—";
@@ -160,7 +157,7 @@ const columns: TableColumn<Product>[] = [
 				onClick: () => column.toggleSorting(column.getIsSorted() === "asc")
 			});
 		},
-		cell: ({ row }) => formatPrice(row.original.price)
+		cell: ({ row }) => formatCurrency(row.original.price)
 	},
 	{ accessorKey: "updatedAt", header: "Updated At", cell: ({ row }) => formatDate(row.original.updatedAt) },
 	{ accessorKey: "category.name", header: "Category", cell: ({ row }) => row.original.category?.name || "—" },

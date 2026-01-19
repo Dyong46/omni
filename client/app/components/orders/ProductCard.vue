@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { Product } from "~/types/product";
 import { useDebounceFn } from "@vueuse/core";
+import productService from "~/services/product.service";
+import type { TableColumn } from "@nuxt/ui";
+import { formatCurrency } from "~/utils/formatters";
+
+const config = useRuntimeConfig();
 
 const props = defineProps<{
 	selectedProducts: Array<Product & { quantity: number; selectedVariant?: string }>;
@@ -16,7 +21,10 @@ const showProductModal = ref(false);
 const searchedProducts = ref<Product[]>([]);
 const selectedProductIds = ref<number[]>([]);
 
+const status = ref<"idle" | "pending" | "success" | "error">("idle");
+
 const UCheckbox = resolveComponent("UCheckbox");
+const UButton = resolveComponent("UButton");
 
 const columns: TableColumn<Product>[] = [
 	{
@@ -84,30 +92,20 @@ const columns: TableColumn<Product>[] = [
 				onClick: () => column.toggleSorting(column.getIsSorted() === "asc")
 			});
 		},
-		cell: ({ row }) => formatPrice(row.original.price)
-	},
-	{
-		id: "sku",
-		label: "SKU"
-	},
-	{
-		id: "stock",
-		label: "Stock",
-		class: "text-right"
+		cell: ({ row }) => formatCurrency(row.original.price)
 	}
 ];
 
-// Product search
 async function searchProducts() {
 	if (!productSearchQuery.value.trim()) {
 		searchedProducts.value = [];
 		return;
 	}
-	
-	try {
-		const response = await $fetch<any>(`/api/products?q=${productSearchQuery.value}`);
 
-		searchedProducts.value = response.data || response || [];
+	try {
+		const response = await productService.search(productSearchQuery.value);
+
+		searchedProducts.value = response;
 	} catch (error) {
 		console.error("Error searching products:", error);
 		toast.add({ title: "Error", description: "Failed to search products", color: "error" });
@@ -159,8 +157,9 @@ function removeProduct(productId: number) {
 }
 
 const openWithDelay = useDebounceFn(() => {
-  openProductModal()
-}, 300)
+	openProductModal();
+}, 300);
+
 </script>
 
 <template>
@@ -263,8 +262,20 @@ const openWithDelay = useDebounceFn(() => {
 				
 				<div class="max-h-96 overflow-y-auto">
 					<UTable
+						ref="table"
+						class="shrink-0"
+
+						:columns="columns"
 						:data="searchedProducts"
-						:empty-state="{ icon: 'i-lucide-package', label: 'No products found' }"
+						:ui="{
+							base: 'table-fixed border-separate border-spacing-0',
+							thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
+							tbody: '[&>tr]:last:[&>td]:border-b-0',
+							th: 'py-2 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
+							td: 'border-b border-default',
+							separator: 'h-0'
+						}"
+						:loading="status === 'pending'"
 					>
 						<template #select-data="{ row }">
 							<UCheckbox

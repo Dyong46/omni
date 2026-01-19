@@ -6,6 +6,7 @@ import type { Row } from "@tanstack/table-core";
 import type { Product } from "~/types";
 import productService from "~/services/product.service";
 import categoryService, { type Category } from "~/services/category.service";
+import { formatCurrency } from "~/utils/formatters";
 
 const UButton = resolveComponent("UButton");
 const UBadge = resolveComponent("UBadge");
@@ -30,10 +31,11 @@ const deleteModalRef = ref();
 
 const selectedIds = computed(() => {
 	const rows = table?.value?.tableApi?.getFilteredSelectedRowModel()?.rows;
+
 	return rows ? rows.map((r: any) => r.original.id) : [];
 });
 
-const categoryFilter = ref<number | 'all'>('all');
+const categoryFilter = ref<number | "all">("all");
 
 // Fetch categories for filtering
 const categories = ref<Category[]>([]);
@@ -44,16 +46,16 @@ onMounted(async () => {
 	try {
 		categories.value = await categoryService.getAll();
 	} catch (error) {
-		console.error('Failed to load categories:', error);
+		console.error("Failed to load categories:", error);
 	} finally {
 		loadingCategories.value = false;
 	}
 });
 
 const categoryItems = computed(() => {
-	if (!categories.value) return [{ label: "All", value: 'all' }];
+	if (!categories.value) return [{ label: "All", value: "all" }];
 	return [
-		{ label: "All", value: 'all' },
+		{ label: "All", value: "all" },
 		...categories.value.map(cat => ({
 			label: cat.name,
 			value: cat.id
@@ -63,20 +65,21 @@ const categoryItems = computed(() => {
 
 // Fetch products data
 const data = ref<Product[]>([]);
-const status = ref<'idle' | 'pending' | 'success' | 'error'>('idle');
+const status = ref<"idle" | "pending" | "success" | "error">("idle");
 
 const loadProducts = async () => {
-	status.value = 'pending';
+	status.value = "pending";
 	try {
 		const params: any = {};
+
 		if (searchQuery.value) params.q = searchQuery.value;
-		if (categoryFilter.value !== 'all') params.categoryId = categoryFilter.value;
+		if (categoryFilter.value !== "all") params.categoryId = categoryFilter.value;
 		
 		data.value = await productService.getAll(params);
-		status.value = 'success';
+		status.value = "success";
 	} catch (error) {
-		status.value = 'error';
-		console.error('Failed to load products:', error);
+		status.value = "error";
+		console.error("Failed to load products:", error);
 	}
 };
 
@@ -91,13 +94,6 @@ watch([searchQuery, categoryFilter], () => {
 const refresh = () => {
 	loadProducts();
 };
-
-function formatPrice(price: number) {
-	return new Intl.NumberFormat("vi-VN", {
-		style: "currency",
-		currency: "VND"
-	}).format(price);
-}
 
 function getStockBadgeColor(quantity: number) {
 	if (quantity === 0) return "error";
@@ -224,7 +220,7 @@ const columns: TableColumn<Product>[] = [
 				onClick: () => column.toggleSorting(column.getIsSorted() === "asc")
 			});
 		},
-		cell: ({ row }) => formatPrice(row.original.price)
+		cell: ({ row }) => formatCurrency(row.original.price)
 	},
 	{
 		accessorKey: "quantity",
@@ -303,7 +299,7 @@ function handleSuccess() {
 }
 
 function goCategories() {
-	router.push('/catergories');
+	router.push("/catergories");
 }
 </script>
 

@@ -3,6 +3,7 @@ import type { TableColumn } from "@nuxt/ui";
 import { getPaginationRowModel } from "@tanstack/table-core";
 import type { Row } from "@tanstack/table-core";
 import productService, { type Product } from "~/services/product.service";
+import { formatCurrency } from "~/utils/formatters";
 
 const UButton = resolveComponent("UButton");
 const UBadge = resolveComponent("UBadge");
@@ -46,10 +47,6 @@ watch(searchQuery, () => {
 	loadInventories();
 });
 
-function formatPrice(price: number) {
-	return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
-}
-
 async function updateQuantity(id: number, quantity: number) {
 	try {
 		await productService.update(id, { stock: quantity });
@@ -78,7 +75,7 @@ const columns: TableColumn<Product>[] = [
 	{
 		accessorKey: "price",
 		header: "Price",
-		cell: ({ row }: { row: Row<Product> }) => formatPrice(row.original.price)
+		cell: ({ row }: { row: Row<Product> }) => formatCurrency(row.original.price)
 	},
 	{
 		accessorKey: "quantity",
