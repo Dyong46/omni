@@ -9,6 +9,8 @@ import {
 	ParseIntPipe,
 	HttpCode,
 	HttpStatus,
+	UseGuards,
+	Patch,
 } from '@nestjs/common';
 import {
 	ApiTags,
@@ -16,20 +18,29 @@ import {
 	ApiResponse,
 	ApiBody,
 	ApiParam,
+	ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Public } from './decorators/public.decorator';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { User } from '../users/entities/user.entity';
 
 @ApiTags('Authentication & User Management')
 @Controller('auth')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
 
 	/**
 	 * Login
 	 */
+	@Public()
 	@Post('login')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({
@@ -80,8 +91,72 @@ export class AuthController {
 	}
 
 	/**
+	 * Get current user profile
+	 */
+	@Get('profile')
+	@ApiOperation({
+		summary: 'Get current user profile',
+		description: 'Get authenticated user information from JWT token',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Profile retrieved successfully',
+		schema: {
+			example: {
+				id: 1,
+				username: 'admin',
+				role: 'admin',
+				createdAt: '2025-12-27T10:00:00.000Z',
+				updatedAt: '2025-12-27T10:00:00.000Z',
+			},
+		},
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized - Invalid or missing token',
+	})
+	async getProfile(@CurrentUser() user: User) {
+		return this.authService.getUserById(user.id);
+	}
+
+	/**
+	 * Update current user profile
+	 */
+	@Patch('profile')
+	@ApiOperation({
+		summary: 'Update current user profile',
+		description: 'Update authenticated user information',
+	})
+	@ApiBody({
+		type: UpdateUserDto,
+		examples: {
+			updateUsername: {
+				summary: 'Change username',
+				value: {
+					username: 'newusername',
+				},
+			},
+		},
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Profile updated successfully',
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Unauthorized',
+	})
+	async updateProfile(
+		@CurrentUser() user: User,
+		@Body() updateUserDto: UpdateUserDto,
+	) {
+		return this.authService.updateUser(user.id, updateUserDto);
+	}
+
+	/**
 	 * Register new user
 	 */
+	@Public()
 	@Post('register')
 	@ApiOperation({
 		summary: 'Register new account',
@@ -340,5 +415,101 @@ export class AuthController {
 	})
 	async deleteUser(@Param('id', ParseIntPipe) id: number) {
 		return this.authService.deleteUser(id);
+	}
+
+	/**
+	 * Change password
+	 */
+	@Post('change-password')
+	@ApiOperation({
+		summary: 'Change password',
+		description: 'Change current user password with old password verification',
+	})
+	@ApiBody({
+		type: ChangePasswordDto,
+		examples: {
+			changePassword: {
+				summary: 'Change password',
+				value: {
+					currentPassword: 'oldpassword123',
+					newPassword: 'newpassword123',
+				},
+			},
+		},
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Password changed successfully',
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Current password is incorrect',
+	})
+	async changePasswordCurrent(
+		@CurrentUser() user: User,
+		@Body() changePasswordDto: ChangePasswordDto,
+	) {
+		return this.authService.changePassword(user.id, changePasswordDto);
+	}
+
+	/**
+	 * Change password (Admin - by user ID)
+	 */
+	/**
+	 * Change password (Admin - by user ID)
+	 */
+	@Put('users/:id/change-password')
+	@ApiOperation({
+		summary: 'Change password',
+		description:
+			'Change user password with current password verification (User can only change their own password)',
+	})
+	@ApiParam({
+		name: 'id',
+		description: 'ID of the user changing password',
+		example: 1,
+	})
+	@ApiBody({
+		type: ChangePasswordDto,
+		examples: {
+			changePassword: {
+				summary: 'Change password',
+				value: {
+					currentPassword: 'oldpassword123',
+					newPassword: 'newpassword123',
+				},
+			},
+		},
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Password changed successfully',
+		schema: {
+			example: {
+				id: 1,
+				username: 'admin',
+				role: 'admin',
+				createdAt: '2025-12-27T10:00:00.000Z',
+				updatedAt: '2025-12-27T14:00:00.000Z',
+			},
+		},
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Current password is incorrect',
+	})
+	@ApiResponse({
+		status: 404,
+		description: 'User not found',
+	})
+	@ApiResponse({
+		status: 409,
+		description: 'New password must be different from current password',
+	})
+	async changePassword(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() changePasswordDto: ChangePasswordDto,
+	) {
+		return this.authService.changePassword(id, changePasswordDto);
 	}
 }

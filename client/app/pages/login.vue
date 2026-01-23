@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import authService from "~/services/auth.service";
 
 const schema = z.object({
-	email: z.string().email({ message: "Invalid email address" }),
+	username: z.string().min(1, { message: "Username is required" }),
 	password: z.string().min(6, { message: "Password must be at least 6 characters" })
 });
 
@@ -14,31 +15,47 @@ definePageMeta({
 });
 
 const state = reactive<Partial<Schema>>({
-	email: undefined,
+	username: undefined,
 	password: undefined
 });
 
 const toast = useToast();
 const loading = ref(false);
+const authStore = useAuthStore();
+const router = useRouter();
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
 	loading.value = true;
 
-	// Simulate API call
-	await new Promise(resolve => setTimeout(resolve, 1000));
+	try {
+		// Call auth service directly
+		const response = await authService.login({
+			username: event.data.username,
+			password: event.data.password
+		});
 
-	toast.add({
-		title: "Login successful",
-		description: "Welcome back to OmniSale",
-		color: "success",
-		icon: "i-lucide-check-circle"
-	});
+		// Update store with auth data
+		authStore.setAuth(response.access_token, response.user);
 
-	loading.value = false;
-	console.log(event.data);
+		toast.add({
+			title: "Login successful",
+			description: `Welcome back, ${response.user.username}!`,
+			color: "success",
+			icon: "i-lucide-check-circle"
+		});
 
-	// Navigate to home
-	navigateTo("/");
+		// Navigate to home
+		await router.push("/");
+	} catch (error: any) {
+		toast.add({
+			title: "Login failed",
+			description: error.message || "Invalid username or password",
+			color: "error",
+			icon: "i-lucide-alert-circle"
+		});
+	} finally {
+		loading.value = false;
+	}
 }
 
 useSeoMeta({
@@ -68,13 +85,12 @@ useSeoMeta({
 			<UCard class="overflow-hidden">
 				<div class="p-6 sm:p-8 space-y-6">
 					<UForm :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
-						<UFormField label="Email" name="email" required>
+						<UFormField label="Username" name="username" required>
 							<UInput
-								v-model="state.email"
-								type="email"
-								placeholder="you@example.com"
-								icon="i-lucide-mail"
-								size="lg"
+								v-model="state.username"
+								type="text"
+								placeholder="Enter your username"
+								icon="i-lucide-user"
 								:disabled="loading"
 							/>
 						</UFormField>
@@ -85,14 +101,12 @@ useSeoMeta({
 								type="password"
 								placeholder="Enter your password"
 								icon="i-lucide-lock"
-								size="lg"
 								:disabled="loading"
 							/>
 						</UFormField>
 
 						<UButton
 							type="submit"
-							size="lg"
 							block
 							:loading="loading"
 							:disabled="loading"

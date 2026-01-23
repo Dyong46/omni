@@ -12,6 +12,7 @@ import { User } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -194,5 +195,48 @@ export class AuthService {
 			select: ['id', 'username', 'role', 'createdAt', 'updatedAt'],
 		});
 		return user;
+	}
+
+	/**
+	 * Change password with current password verification
+	 */
+	async changePassword(userId: number, changePasswordDto: ChangePasswordDto) {
+		const { currentPassword, newPassword } = changePasswordDto;
+
+		// Find user with password
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		if (!user) {
+			throw new NotFoundException('User not found');
+		}
+
+		// Verify current password
+		const isPasswordValid = await bcrypt.compare(
+			currentPassword,
+			user.password,
+		);
+		if (!isPasswordValid) {
+			throw new UnauthorizedException('Current password is incorrect');
+		}
+
+		// Check if new password is different from current
+		const isSamePassword = await bcrypt.compare(newPassword, user.password);
+		if (isSamePassword) {
+			throw new ConflictException(
+				'New password must be different from current password',
+			);
+		}
+
+		// Hash and update new password
+		user.password = await bcrypt.hash(newPassword, 10);
+		const updatedUser = await this.userRepository.save(user);
+
+		// Return user info (excluding password)
+		return {
+			id: updatedUser.id,
+			username: updatedUser.username,
+			role: updatedUser.role,
+			createdAt: updatedUser.createdAt,
+			updatedAt: updatedUser.updatedAt,
+		};
 	}
 }

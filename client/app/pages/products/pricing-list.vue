@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui';
-import { getPaginationRowModel } from '@tanstack/table-core';
-import type { Row } from '@tanstack/table-core';
-import { ref, watch, onMounted } from 'vue';
-import type { Product } from '~/types';
-import type { Ref } from 'vue';
+import type { TableColumn } from "@nuxt/ui";
+import { getPaginationRowModel } from "@tanstack/table-core";
+import type { Row } from "@tanstack/table-core";
+import { ref, onMounted } from "vue";
+import productService, { type Product } from "~/services/product.service";
+import type { Ref } from "vue";
 
-const UButton = resolveComponent('UButton');
-const UBadge = resolveComponent('UBadge');
-const UDropdownMenu = resolveComponent('UDropdownMenu');
-const UCheckbox = resolveComponent('UCheckbox');
+const UButton = resolveComponent("UButton");
+const UBadge = resolveComponent("UBadge");
+const UDropdownMenu = resolveComponent("UDropdownMenu");
+const UCheckbox = resolveComponent("UCheckbox");
 
 const { isNotificationsSlideoverOpen } = useDashboard();
+const toast = useToast();
 
-const table = useTemplateRef('table');
-
-const { data, refresh } = await useFetch<Product[]>('/api/products', { lazy: true });
+const table = useTemplateRef("table");
 
 const products = ref<Product[]>([]);
-const columnFilters = ref([{ id: 'name', value: '' }]);
+const status = ref<"idle" | "pending" | "success" | "error">("idle");
+const columnFilters = ref([{ id: "name", value: "" }]);
 const columnVisibility = ref();
 const rowSelection = ref({});
 const pagination = ref({ pageIndex: 0, pageSize: 10 });
@@ -27,24 +27,37 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 });
 const isEditModalOpen = ref(false);
 const editingProduct: Ref<Product | null> = ref(null);
 const editPrice = ref<number | null>(null);
-const priceError = ref('');
+const priceError = ref("");
 
-watch(data, (v) => {
-	if (v) products.value = v;
-});
+const loadProducts = async () => {
+	status.value = "pending";
+	try {
+		products.value = await productService.getAll();
+		status.value = "success";
+	} catch (error) {
+		status.value = "error";
+		console.error("Failed to load products:", error);
+	}
+};
+
+const refresh = () => {
+	loadProducts();
+};
 
 function formatPrice(price: number) {
-	return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+	return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
 }
 
 function formatDate(value: string | Date | undefined | null) {
-	if (!value) return '—';
+	if (!value) return "—";
 	let d: Date;
-	if (typeof value === 'string') {
+
+	if (typeof value === "string") {
 		const s = value.trim();
 		// Detect explicit timezone (Z or +HH or -HH). If absent, assume UTC by appending 'Z'
 		const hasTZ = /([zZ]|[+-]\d{2}(:?\d{2})?)$/.test(s);
-		d = new Date(hasTZ ? s : s + 'Z');
+
+		d = new Date(hasTZ ? s : s + "Z");
 	} else {
 		d = value;
 	}
@@ -52,10 +65,10 @@ function formatDate(value: string | Date | undefined | null) {
 	if (Number.isNaN(d.getTime())) return String(value);
 
 	try {
-		return new Intl.DateTimeFormat('vi-VN', {
-			year: 'numeric',
-			month: '2-digit',
-			day: '2-digit',
+		return new Intl.DateTimeFormat("vi-VN", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit"
 		}).format(d as Date);
 	} catch (e) {
 		return d.toLocaleDateString();
@@ -64,104 +77,108 @@ function formatDate(value: string | Date | undefined | null) {
 
 function getRowItems(row: Row<Product>) {
 	return [
-		{ type: 'label', label: 'Actions' },
+		{ type: "label", label: "Actions" },
 		{
-			label: 'Edit price',
-			icon: 'i-lucide-pencil',
+			label: "Edit price",
+			icon: "i-lucide-pencil",
 			onSelect() {
 				openEditPrice(row.original);
-			},
-		},
+			}
+		}
 	];
 }
 
 function openEditPrice(product: Product) {
 	editingProduct.value = product;
 	editPrice.value = product.price;
-	priceError.value = '';
+	priceError.value = "";
 	isEditModalOpen.value = true;
 }
 
 async function savePrice() {
 	if (!editingProduct.value) return;
 	const price = Number(editPrice.value);
+
 	if (!Number.isFinite(price) || price < 0) {
-		priceError.value = 'Giá không hợp lệ';
+		priceError.value = "Giá không hợp lệ";
 		return;
 	}
 	try {
-		await $fetch(`/api/products/${editingProduct.value.id}/price`, { method: 'PUT', body: { price } });
+		await productService.update(editingProduct.value.id, { price });
+		toast.add({ title: "Success", description: "Price updated successfully", color: "success" });
 		await refresh();
 		isEditModalOpen.value = false;
 		editingProduct.value = null;
-	} catch (e) {
+	} catch (e: any) {
 		console.error(e);
-		priceError.value = 'Có lỗi khi lưu giá';
+		priceError.value = e.message || "Có lỗi khi lưu giá";
+		toast.add({ title: "Error", description: "Failed to update price", color: "error" });
 	}
 }
 
 const columns: TableColumn<Product>[] = [
 	{
-		id: 'select',
+		id: "select",
 		header: ({ table }) =>
 			h(UCheckbox, {
-				modelValue: table.getIsSomePageRowsSelected() ? 'indeterminate' : table.getIsAllPageRowsSelected(),
-				'onUpdate:modelValue': (value: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!value),
-				ariaLabel: 'Select all',
+				modelValue: table.getIsSomePageRowsSelected() ? "indeterminate" : table.getIsAllPageRowsSelected(),
+				"onUpdate:modelValue": (value: boolean | "indeterminate") => table.toggleAllPageRowsSelected(!!value),
+				ariaLabel: "Select all"
 			}),
 		cell: ({ row }) =>
 			h(UCheckbox, {
 				modelValue: row.getIsSelected(),
-				'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
-				ariaLabel: 'Select row',
-			}),
+				"onUpdate:modelValue": (value: boolean | "indeterminate") => row.toggleSelected(!!value),
+				ariaLabel: "Select row"
+			})
 	},
-	{ accessorKey: 'id', header: 'ID' },
+	{ accessorKey: "id", header: "ID" },
 	{
-		accessorKey: 'name',
-		header: 'Product Name',
+		accessorKey: "name",
+		header: "Product Name",
 		cell: ({ row }) =>
-			h('div', { class: 'flex items-center gap-3' }, [
+			h("div", { class: "flex items-center gap-3" }, [
 				row.original.image
-					? h('img', { src: row.original.image, alt: row.original.name, class: 'w-10 h-10 object-cover rounded' })
-					: h('div', { class: 'w-10 h-10 bg-gray-200 rounded flex items-center justify-center' }, [
-							h('span', { class: 'text-gray-500 text-xs' }, 'No img'),
-						]),
-				h('div', undefined, [h('p', { class: 'font-medium text-highlighted' }, row.original.name), row.original.category ? h('p', { class: 'text-sm text-muted' }, row.original.category.name) : null]),
-			]),
+					? h("img", { src: row.original.image, alt: row.original.name, class: "w-10 h-10 object-cover rounded" })
+					: h("div", { class: "w-10 h-10 bg-gray-200 rounded flex items-center justify-center" }, [
+						h("span", { class: "text-gray-500 text-xs" }, "No img")
+					]),
+				h("div", undefined, [h("p", { class: "font-medium text-highlighted" }, row.original.name), row.original.category ? h("p", { class: "text-sm text-muted" }, row.original.category.name) : null])
+			])
 	},
 	{
-		accessorKey: 'price',
+		accessorKey: "price",
 		header: ({ column }) => {
 			const isSorted = column.getIsSorted();
+
 			return h(UButton, {
-				color: 'neutral',
-				variant: 'ghost',
-				label: 'Price',
-				icon: isSorted ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow') : 'i-lucide-arrow-up-down',
-				class: '-mx-2.5',
-				onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+				color: "neutral",
+				variant: "ghost",
+				label: "Price",
+				icon: isSorted ? (isSorted === "asc" ? "i-lucide-arrow-up-narrow-wide" : "i-lucide-arrow-down-wide-narrow") : "i-lucide-arrow-up-down",
+				class: "-mx-2.5",
+				onClick: () => column.toggleSorting(column.getIsSorted() === "asc")
 			});
 		},
-		cell: ({ row }) => formatPrice(row.original.price),
+		cell: ({ row }) => formatPrice(row.original.price)
 	},
-	{ accessorKey: 'updatedAt', header: 'Updated At', cell: ({ row }) => formatDate(row.original.updatedAt) },
-	{ accessorKey: 'category.name', header: 'Category', cell: ({ row }) => row.original.category?.name || '—' },
+	{ accessorKey: "updatedAt", header: "Updated At", cell: ({ row }) => formatDate(row.original.updatedAt) },
+	{ accessorKey: "category.name", header: "Category", cell: ({ row }) => row.original.category?.name || "—" },
 	{
-		id: 'actions',
+		id: "actions",
 		cell: ({ row }) =>
-			h('div', { class: 'text-right' },
+			h("div", { class: "text-right" },
 				h(
 					UDropdownMenu,
-					{ content: { align: 'end' }, items: getRowItems(row) },
-					() => h(UButton, { icon: 'i-lucide-ellipsis-vertical', color: 'neutral', variant: 'ghost', class: 'ml-auto' })
+					{ content: { align: "end" }, items: getRowItems(row) },
+					() => h(UButton, { icon: "i-lucide-ellipsis-vertical", color: "neutral", variant: "ghost", class: "ml-auto" })
 				)
-			),
-	},
+			)
+	}
 ];
 
-onMounted(async () => {
-	await refresh();
+onMounted(() => {
+	loadProducts();
 });
 </script>
 
@@ -207,18 +224,18 @@ onMounted(async () => {
 			/>
 			<!-- Edit price modal -->
 			<div v-if="isEditModalOpen" class="fixed inset-0 z-50 flex items-center justify-center">
-				<div class="absolute inset-0 bg-black/60" @click="isEditModalOpen = false"></div>
+				<div class="absolute inset-0 bg-black/60" @click="isEditModalOpen = false"/>
 				<div class="relative w-full max-w-md mx-4 bg-slate-900 text-white rounded-lg shadow-lg p-6 ring-1 ring-slate-700">
 					<h3 class="text-lg font-medium mb-2 text-white">Cập nhật giá</h3>
 					<p class="text-sm text-slate-300 mb-4">Sản phẩm: <span class="font-medium text-white">{{ editingProduct?.name }}</span></p>
 					<label class="block text-sm text-slate-300 mb-1">Giá (VND)</label>
 					<input
+						v-model.number="editPrice"
 						type="number"
 						step="1"
 						min="0"
-						v-model.number="editPrice"
 						class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 mb-2 text-white placeholder-slate-400"
-					/>
+					>
 					<p v-if="priceError" class="text-sm text-rose-300 mb-2">{{ priceError }}</p>
 					<div class="flex items-center justify-end gap-2 mt-4">
 						<UButton variant="ghost" color="neutral" class="text-white" @click="(isEditModalOpen = false, editingProduct = null)">Hủy</UButton>

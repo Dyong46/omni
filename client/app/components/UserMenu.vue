@@ -43,17 +43,35 @@ defineProps<{
 
 const colorMode = useColorMode();
 const appConfig = useAppConfig();
+const authStore = useAuthStore();
+const router = useRouter();
 
 const colors = ["red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"];
 const neutrals = ["slate", "gray", "zinc", "neutral", "stone"];
 
-const user = ref({
-	name: "Benjamin Canac",
-	avatar: {
-		src: "https://github.com/benjamincanac.png",
-		alt: "Benjamin Canac"
-	}
+const isHydrated = ref(false);
+
+onMounted(() => {
+	isHydrated.value = true;
 });
+
+const user = computed(() => {
+	const username = isHydrated.value && authStore.currentUser?.username ? authStore.currentUser.username : "User";
+	const safeSeed = encodeURIComponent(username);
+
+	return {
+		name: username,
+		avatar: {
+			src: `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeSeed}`,
+			alt: username
+		}
+	};
+});
+
+const handleLogout = async () => {
+	authStore.clearAuth();
+	await router.push("/login");
+};
 
 const items = computed<DropdownMenuItem[][]>(() => ([
 	[{
@@ -141,7 +159,8 @@ const items = computed<DropdownMenuItem[][]>(() => ([
 	}],
 	[{
 		label: "Log out",
-		icon: "i-lucide-log-out"
+		icon: "i-lucide-log-out",
+		onSelect: handleLogout
 	}]]));
 
 </script>

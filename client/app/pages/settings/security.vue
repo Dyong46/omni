@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import * as z from "zod";
-import type { FormError } from "@nuxt/ui";
+import type { FormError, FormSubmitEvent } from "@nuxt/ui";
+import authService from "~/services/auth.service";
 
 const passwordSchema = z.object({
-	current: z.string().min(8, "Must be at least 8 characters"),
-	new: z.string().min(8, "Must be at least 8 characters")
+	current: z.string().min(6, "Must be at least 6 characters"),
+	new: z.string().min(6, "Must be at least 6 characters")
 });
 
 type PasswordSchema = z.output<typeof passwordSchema>
+
+const authStore = useAuthStore();
+const toast = useToast();
+const loading = ref(false);
 
 const password = reactive<Partial<PasswordSchema>>({
 	current: undefined,
@@ -23,6 +28,36 @@ const validate = (state: Partial<PasswordSchema>): FormError[] => {
 	return errors;
 };
 
+async function onSubmit(event: FormSubmitEvent<PasswordSchema>) {
+	loading.value = true;
+
+	try {
+		await authService.changePassword({
+			oldPassword: event.data.current,
+			newPassword: event.data.new
+		});
+
+		toast.add({
+			title: "Success",
+			description: "Your password has been updated successfully.",
+			icon: "i-lucide-check",
+			color: "success"
+		});
+
+		// Reset form
+		password.current = undefined;
+		password.new = undefined;
+	} catch (error: any) {
+		toast.add({
+			title: "Update failed",
+			description: error.message || "Failed to update password",
+			color: "error",
+			icon: "i-lucide-alert-circle"
+		});
+	} finally {
+		loading.value = false;
+	}
+}
 </script>
 
 <template>
@@ -36,24 +71,33 @@ const validate = (state: Partial<PasswordSchema>): FormError[] => {
 			:state="password"
 			:validate="validate"
 			class="flex flex-col gap-4 max-w-xs"
+			@submit="onSubmit"
 		>
-			<UFormField name="current">
+			<UFormField name="current" label="Current Password" required>
 				<UInput
 					v-model="password.current"
 					type="password"
-					placeholder="Current password"
+					placeholder="Enter current password"
+					:disabled="loading"
 					class="w-full"
 				/>
 			</UFormField>
-			<UFormField name="new">
+			<UFormField name="new" label="New Password" required>
 				<UInput
 					v-model="password.new"
 					type="password"
-					placeholder="New password"
+					placeholder="Enter new password"
+					:disabled="loading"
 					class="w-full"
 				/>
 			</UFormField>
-			<UButton label="Update" class="w-fit" type="submit" />
+			<UButton 
+				label="Update Password" 
+				class="w-fit" 
+				type="submit"
+				:loading="loading"
+				:disabled="loading"
+			/>
 		</UForm>
 	</UPageCard>
 	<UPageCard
