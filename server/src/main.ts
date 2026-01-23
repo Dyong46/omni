@@ -7,14 +7,17 @@ async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
 	const configService = app.get(ConfigService);
 
-	// const corsOrigin = configService.get<string>('app.corsOrigin') ?? '*';
+	const corsOrigin = configService.get<string>('app.corsOrigin') ?? '*';
 
 	app.setGlobalPrefix('api');
 
-	// app.enableCors({
-	// 	origin: corsOrigin,
-	// 	credentials: true,
-	// });
+	// Enable CORS so browser clients (e.g. http://localhost:3000) can call the API
+	app.enableCors({
+		origin: corsOrigin,
+		credentials: true,
+		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+		allowedHeaders: 'Content-Type, Accept, Authorization'
+	});
 
 	// app.useGlobalPipes(
 	// 	new ValidationPipe({
