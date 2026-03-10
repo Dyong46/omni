@@ -1,7 +1,11 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 const getBaseURL = () => {
-	return process.env.NUXT_PUBLIC_API_BASE;
+	const baseURL = import.meta.env.NUXT_PUBLIC_API_BASE || "http://localhost:4000/api";
+	
+	console.log(baseURL);
+	
+	return baseURL;
 };
 
 const axiosInstance: AxiosInstance = axios.create({
@@ -30,7 +34,7 @@ axiosInstance.interceptors.request.use(
 
 axiosInstance.interceptors.response.use(
 	(response) => {
-		return response;
+		return response.data;
 	},
 	(error: AxiosError) => {
 		const { response } = error;
