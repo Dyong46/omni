@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import type { Product } from "~/types/product";
+import { useDebounceFn } from "@vueuse/core";
+import productService from "~/services/product.service";
+import type { TableColumn } from "@nuxt/ui";
+import { formatCurrency } from "~/utils/formatters";
+
+const config = useRuntimeConfig();
 
 const props = defineProps<{
 	selectedProducts: Array<Product & { quantity: number; selectedVariant?: string }>;
@@ -15,50 +21,91 @@ const showProductModal = ref(false);
 const searchedProducts = ref<Product[]>([]);
 const selectedProductIds = ref<number[]>([]);
 
-const UCheckbox = resolveComponent("UCheckbox");
+const status = ref<"idle" | "pending" | "success" | "error">("idle");
 
-const columns = [
+const UCheckbox = resolveComponent("UCheckbox");
+const UButton = resolveComponent("UButton");
+
+const columns: TableColumn<Product>[] = [
 	{
-		key: "select",
 		id: "select",
-		label: "",
-		class: "w-12"
+		header: ({ table }) =>
+			h(UCheckbox, {
+				"modelValue": table.getIsSomePageRowsSelected()
+					? "indeterminate"
+					: table.getIsAllPageRowsSelected(),
+				"onUpdate:modelValue": (value: boolean | "indeterminate") =>
+					table.toggleAllPageRowsSelected(!!value),
+				"ariaLabel": "Select all"
+			}),
+		cell: ({ row }) =>
+			h(UCheckbox, {
+				"modelValue": row.getIsSelected(),
+				"onUpdate:modelValue": (value: boolean | "indeterminate") => row.toggleSelected(!!value),
+				"ariaLabel": "Select row"
+			})
 	},
 	{
-		key: "product",
-		id: "product",
-		label: "Product"
+		accessorKey: "id",
+		header: "ID"
 	},
 	{
-		key: "sku",
-		id: "sku",
-		label: "SKU"
+		accessorKey: "name",
+		header: "Product Name",
+		cell: ({ row }) => {
+			return h("div", { class: "flex items-center gap-3" }, [
+				row.original.image
+					? h("img", {
+						src: row.original.image,
+						alt: row.original.name,
+						class: "w-10 h-10 object-cover rounded"
+					})
+					: h("div", {
+						class: "w-10 h-10 bg-gray-200 rounded flex items-center justify-center"
+					}, [
+						h("span", { class: "text-gray-500 text-xs" }, "No img")
+					]),
+				h("div", undefined, [
+					h("p", { class: "font-medium text-highlighted" }, row.original.name),
+					row.original.category
+						? h("p", { class: "text-sm text-muted" }, row.original.category.name)
+						: null
+				])
+			]);
+		}
 	},
 	{
-		key: "price",
-		id: "price",
-		label: "Price",
-		class: "text-right"
-	},
-	{
-		key: "stock",
-		id: "stock",
-		label: "Stock",
-		class: "text-right"
+		accessorKey: "price",
+		header: ({ column }) => {
+			const isSorted = column.getIsSorted();
+
+			return h(UButton, {
+				color: "neutral",
+				variant: "ghost",
+				label: "Price",
+				icon: isSorted
+					? isSorted === "asc"
+						? "i-lucide-arrow-up-narrow-wide"
+						: "i-lucide-arrow-down-wide-narrow"
+					: "i-lucide-arrow-up-down",
+				class: "-mx-2.5",
+				onClick: () => column.toggleSorting(column.getIsSorted() === "asc")
+			});
+		},
+		cell: ({ row }) => formatCurrency(row.original.price)
 	}
 ];
 
-// Product search
 async function searchProducts() {
 	if (!productSearchQuery.value.trim()) {
 		searchedProducts.value = [];
 		return;
 	}
-	
-	try {
-		const response = await $fetch<any>(`/api/products?q=${productSearchQuery.value}`);
 
-		searchedProducts.value = response.data || response || [];
+	try {
+		const response = await productService.search(productSearchQuery.value);
+
+		searchedProducts.value = response;
 	} catch (error) {
 		console.error("Error searching products:", error);
 		toast.add({ title: "Error", description: "Failed to search products", color: "error" });
@@ -108,6 +155,11 @@ function removeProduct(productId: number) {
 
 	emit("update:selectedProducts", products);
 }
+
+const openWithDelay = useDebounceFn(() => {
+	openProductModal();
+}, 300);
+
 </script>
 
 <template>
@@ -124,9 +176,8 @@ function removeProduct(productId: number) {
 					placeholder="Search products"
 					icon="i-lucide-search"
 					size="lg"
-					readonly
 					class="cursor-pointer flex-1"
-					@click="openProductModal"
+					@click="openWithDelay"
 				/>
 				<UButton
 					label="Search"
@@ -211,9 +262,20 @@ function removeProduct(productId: number) {
 				
 				<div class="max-h-96 overflow-y-auto">
 					<UTable
+						ref="table"
+						class="shrink-0"
+
 						:columns="columns"
-						:rows="searchedProducts"
-						:empty-state="{ icon: 'i-lucide-package', label: 'No products found' }"
+						:data="searchedProducts"
+						:ui="{
+							base: 'table-fixed border-separate border-spacing-0',
+							thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
+							tbody: '[&>tr]:last:[&>td]:border-b-0',
+							th: 'py-2 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
+							td: 'border-b border-default',
+							separator: 'h-0'
+						}"
+						:loading="status === 'pending'"
 					>
 						<template #select-data="{ row }">
 							<UCheckbox

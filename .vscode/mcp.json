@@ -4,5 +4,6 @@
 			"type": "http",
 			"url": "https://ui.nuxt.com/mcp"
 		}
-  }
+  },
+	"inputs": []
 }

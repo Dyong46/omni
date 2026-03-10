@@ -35,7 +35,8 @@ export class CategoriesController {
 	@Post()
 	@ApiOperation({
 		summary: 'Create new category',
-		description: 'Create a new category with optional parent for nested hierarchy',
+		description:
+			'Create a new category with optional parent for nested hierarchy',
 	})
 	@ApiBody({
 		type: CreateCategoryDto,

@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import customerService from "~/services/customer.service";
 import type { Customer } from "~/types/customer";
+import { z } from "zod";
 
 const props = defineProps<{
 	selectedCustomer: Customer | null;
@@ -11,63 +13,65 @@ const emit = defineEmits<{
 
 const toast = useToast();
 const customerSearchQuery = ref("");
-const customers = ref<Customer[]>([]);
-const showCustomerDropdown = ref(false);
-const showCreateCustomerModal = ref(false);
-const newCustomer = ref({ name: "", phone: "", email: "" });
+const customerSearchError = ref("");
+const isSearching = ref(false);
+const phoneSchema = z.string().regex(/^\d{10}$/, "Số điện thoại phải đúng 10 chữ số");
 
-// Customer search with debounce
-const debouncedCustomerSearch = useDebounceFn(async () => {
-	if (!customerSearchQuery.value.trim()) {
-		customers.value = [];
-		showCustomerDropdown.value = false;
-		return;
-	}
-	
+const debouncedCustomerSearch = useDebounceFn(async (phone: string) => {
+	const phoneQuery = phone.trim();
+
 	try {
-		const response = await $fetch<any>(`/api/customers?phone=${customerSearchQuery.value}`);
+		isSearching.value = true;
+		const searchedCustomers = await customerService.search(phoneQuery);
+		const firstCustomer = searchedCustomers?.[0] ?? null;
 
-		customers.value = response.data || response || [];
-		showCustomerDropdown.value = true;
+		if (!firstCustomer) {
+			emit("update:selectedCustomer", null);
+			toast.add({ title: "Not found", description: "Không tìm thấy khách hàng với số điện thoại này", color: "warning" });
+			return;
+		}
+
+		emit("update:selectedCustomer", firstCustomer);
 	} catch (error) {
-		console.error("Error searching customers:", error);
-		customers.value = [];
-		showCustomerDropdown.value = true;
+		const errorMessage = error instanceof Error ? error.message : "Tìm kiếm khách hàng thất bại";
+
+		toast.add({ title: "Error", description: errorMessage, color: "error" });
+	} finally {
+		isSearching.value = false;
 	}
 }, 500);
 
-watch(customerSearchQuery, () => {
-	debouncedCustomerSearch();
+watch(customerSearchQuery, (value) => {
+	const trimmedValue = value.trim();
+
+	if (!trimmedValue) {
+		customerSearchError.value = "";
+		emit("update:selectedCustomer", null);
+		return;
+	}
+
+	const validationResult = phoneSchema.safeParse(trimmedValue);
+
+	if (!validationResult.success) {
+		customerSearchError.value = validationResult.error.issues[0]?.message || "Dữ liệu không hợp lệ";
+		emit("update:selectedCustomer", null);
+		return;
+	}
+
+	customerSearchError.value = "";
+
+	debouncedCustomerSearch(value);
 });
 
-function selectCustomer(customer: Customer) {
-	emit("update:selectedCustomer", customer);
-	customerSearchQuery.value = customer.phone;
-	showCustomerDropdown.value = false;
-}
-
-function openCreateCustomerModal() {
-	newCustomer.value = { name: "", phone: customerSearchQuery.value, email: "" };
-	showCreateCustomerModal.value = true;
-	showCustomerDropdown.value = false;
-}
-
-async function createCustomer() {
-	try {
-		const response = await $fetch<any>("/api/customers", {
-			method: "POST",
-			body: newCustomer.value
-		});
-		const createdCustomer = response.data || response;
-
-		emit("update:selectedCustomer", createdCustomer);
-		customerSearchQuery.value = createdCustomer.phone;
-		showCreateCustomerModal.value = false;
-		toast.add({ title: "Success", description: "Customer created successfully" });
-	} catch (error: any) {
-		toast.add({ title: "Error", description: error?.message || "Failed to create customer", color: "error" });
-	}
-}
+watch(
+	() => props.selectedCustomer,
+	(value) => {
+		if (value?.phone) {
+			customerSearchQuery.value = value.phone;
+		}
+	},
+	{ immediate: true }
+);
 </script>
 
 <template>
@@ -75,72 +79,24 @@ async function createCustomer() {
 		<template #header>
 			<h3 class="font-semibold">Customer</h3>
 		</template>
-		
+
 		<div>
-			<!-- Customer Search -->
-			<div class="relative">
+			<div class="space-y-1">
 				<UInput
 					v-model="customerSearchQuery"
-					placeholder="Search phone customer"
+					placeholder="Nhập số điện thoại (10 số)"
 					icon="i-lucide-search"
 					class="w-full"
 				/>
+				<p v-if="customerSearchError" class="text-xs text-error">{{ customerSearchError }}</p>
+				<p class="text-xs text-muted">Hệ thống chỉ tìm khi bạn nhập đúng 10 chữ số.</p>
+				<p v-if="isSearching" class="text-xs text-muted">Đang tìm khách hàng...</p>
+			</div>
+
+			<div v-if="props.selectedCustomer" class="mt-3 rounded-md border p-3">
+				<p class="font-medium">{{ props.selectedCustomer.name || "Unnamed customer" }}</p>
+				<p class="text-sm text-muted">{{ props.selectedCustomer.phone }}</p>
 			</div>
 		</div>
 	</UCard>
-	
-	<!-- Create Customer Modal -->
-	<UModal
-		v-model:open="showCreateCustomerModal" 
-		title="Create New Customer"
-		description="Add a new customer to the system"
-	>
-		<template #body>
-			<div class="space-y-4">
-				<div>
-					<label class="block text-sm font-medium mb-2">Phone Number *</label>
-					<UInput
-						v-model="newCustomer.phone"
-						placeholder="Enter phone number"
-						size="lg"
-					/>
-				</div>
-				
-				<div>
-					<label class="block text-sm font-medium mb-2">Customer Name</label>
-					<UInput
-						v-model="newCustomer.name"
-						placeholder="Enter customer name"
-						size="lg"
-					/>
-				</div>
-				
-				<div>
-					<label class="block text-sm font-medium mb-2">Email</label>
-					<UInput
-						v-model="newCustomer.email"
-						type="email"
-						placeholder="Enter email"
-						size="lg"
-					/>
-				</div>
-			</div>
-		</template>
-		
-		<template #footer>
-			<div class="flex justify-end gap-3">
-				<UButton
-					label="Cancel"
-					variant="outline"
-					@click="showCreateCustomerModal = false"
-				/>
-				<UButton
-					label="Create Customer"
-					color="primary"
-					:disabled="!newCustomer.phone"
-					@click="createCustomer"
-				/>
-			</div>
-		</template>
-	</UModal>
 </template>

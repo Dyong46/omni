@@ -62,7 +62,7 @@ const user = computed(() => {
 	return {
 		name: username,
 		avatar: {
-			src: `https://api.dicebear.com/7.x/avataaars/svg?seed=${safeSeed}`,
+			src: "/svg/avatar.svg",
 			alt: username
 		}
 	};
