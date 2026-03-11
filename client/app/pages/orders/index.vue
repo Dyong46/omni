@@ -5,7 +5,6 @@ import { getPaginationRowModel } from "@tanstack/table-core";
 import type { Row } from "@tanstack/table-core";
 import orderService, { type Order } from "~/services/order.service";
 
-const UAvatar = resolveComponent("UAvatar");
 const UButton = resolveComponent("UButton");
 const UBadge = resolveComponent("UBadge");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
@@ -147,9 +146,27 @@ const columns: TableColumn<Order>[] = [
 		}
 	},
 	{
-		accessorKey: "location",
-		header: "Location",
-		cell: ({ row }) => row.original.address
+		accessorKey: "channel",
+		header: "Channel",
+		cell: ({ row }) => {
+			const colorMap: Record<string, "neutral" | "primary" | "error"> = {
+				offline: "neutral",
+				tiktok: "error",
+				shopee: "primary"
+			};
+			const ch = row.original.channel ?? "offline";
+
+			return h(
+				UBadge,
+				{ class: "capitalize", variant: "subtle", color: colorMap[ch] ?? "neutral" },
+				() => ch
+			);
+		}
+	},
+	{
+		accessorKey: "shippingAddress",
+		header: "Shipping Address",
+		cell: ({ row }) => row.original.shippingAddress ?? "—"
 	},
 	{
 		accessorKey: "status",
