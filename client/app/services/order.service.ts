@@ -1,8 +1,12 @@
-import axios from '~/utils/axios';
+import axios from "~/utils/axios";
+
+export type OrderChannel = "offline" | "shopee" | "tiktok";
 
 export interface Order {
+  avatar?: string;
+  address?: string;
   id: number;
-  channel: 'offline' | 'shopee' | 'tiktok';
+  channel: OrderChannel;
   customerName: string;
   phone: string;
   email?: string;
@@ -26,11 +30,12 @@ export interface OrderItem {
 }
 
 export interface CreateOrderDto {
-  channel: 'offline' | 'shopee' | 'tiktok';
-  customerName: string;
+  channel: OrderChannel;
+  customerName?: string;
   phone: string;
   email?: string;
-  shippingAddress: string;
+  shippingAddress?: string;
+  status?: string;
   items: {
     productId: number;
     quantity: number;
@@ -39,7 +44,7 @@ export interface CreateOrderDto {
 }
 
 export interface UpdateOrderDto {
-  channel?: 'offline' | 'shopee' | 'tiktok';
+  channel?: OrderChannel;
   customerName?: string;
   phone?: string;
   email?: string;
@@ -48,7 +53,7 @@ export interface UpdateOrderDto {
 }
 
 export interface OrderFilters {
-  channel?: 'offline' | 'shopee' | 'tiktok';
+  channel?: OrderChannel;
   status?: string;
   startDate?: string;
   endDate?: string;
@@ -69,58 +74,58 @@ export interface OrderStatistics {
 }
 
 class OrderService {
-  private readonly endpoint = '/orders';
+	private readonly endpoint = "/orders";
 
-  /**
+	/**
    * Get all orders with optional filters
    */
-  async getAll(filters?: OrderFilters): Promise<Order[]> {
-    return axios.get(this.endpoint, { params: filters });
-  }
+	async getAll(filters?: OrderFilters): Promise<Order[]> {
+		return axios.get(this.endpoint, { params: filters });
+	}
 
-  /**
+	/**
    * Get order statistics
    */
-  async getStatistics(): Promise<OrderStatistics> {
-    return axios.get(`${this.endpoint}/statistics`);
-  }
+	async getStatistics(): Promise<OrderStatistics> {
+		return axios.get(`${this.endpoint}/statistics`);
+	}
 
-  /**
+	/**
    * Get recent orders
    */
-  async getRecent(limit?: number): Promise<Order[]> {
-    return axios.get(`${this.endpoint}/recent`, {
-      params: { limit }
-    });
-  }
+	async getRecent(limit?: number): Promise<Order[]> {
+		return axios.get(`${this.endpoint}/recent`, {
+			params: { limit }
+		});
+	}
 
-  /**
+	/**
    * Get a single order by ID
    */
-  async getById(id: number): Promise<Order> {
-    return axios.get(`${this.endpoint}/${id}`);
-  }
+	async getById(id: number): Promise<Order> {
+		return axios.get(`${this.endpoint}/${id}`);
+	}
 
-  /**
+	/**
    * Create a new order
    */
-  async create(data: CreateOrderDto): Promise<Order> {
-    return axios.post(this.endpoint, data);
-  }
+	async create(data: CreateOrderDto): Promise<Order> {
+		return axios.post(this.endpoint, data);
+	}
 
-  /**
+	/**
    * Update an order
    */
-  async update(id: number, data: UpdateOrderDto): Promise<Order> {
-    return axios.put(`${this.endpoint}/${id}`, data);
-  }
+	async update(id: number, data: UpdateOrderDto): Promise<Order> {
+		return axios.put(`${this.endpoint}/${id}`, data);
+	}
 
-  /**
+	/**
    * Delete an order
    */
-  async delete(id: number): Promise<void> {
-    return axios.delete(`${this.endpoint}/${id}`);
-  }
+	async delete(id: number): Promise<void> {
+		return axios.delete(`${this.endpoint}/${id}`);
+	}
 }
 
 export default new OrderService();

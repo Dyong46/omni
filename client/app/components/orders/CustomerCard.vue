@@ -15,7 +15,7 @@ const toast = useToast();
 const customerSearchQuery = ref("");
 const customerSearchError = ref("");
 const isSearching = ref(false);
-const phoneSchema = z.string().regex(/^\d{10}$/, "Số điện thoại phải đúng 10 chữ số");
+const phoneSchema = z.string().regex(/^\d{10}$/, "Phone number must be exactly 10 digits");
 
 const debouncedCustomerSearch = useDebounceFn(async (phone: string) => {
 	const phoneQuery = phone.trim();
@@ -27,13 +27,13 @@ const debouncedCustomerSearch = useDebounceFn(async (phone: string) => {
 
 		if (!firstCustomer) {
 			emit("update:selectedCustomer", null);
-			toast.add({ title: "Not found", description: "Không tìm thấy khách hàng với số điện thoại này", color: "warning" });
+			toast.add({ title: "Not found", description: "No customer found with this phone number", color: "warning" });
 			return;
 		}
 
 		emit("update:selectedCustomer", firstCustomer);
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : "Tìm kiếm khách hàng thất bại";
+		const errorMessage = error instanceof Error ? error.message : "Failed to search for customer";
 
 		toast.add({ title: "Error", description: errorMessage, color: "error" });
 	} finally {
@@ -53,7 +53,7 @@ watch(customerSearchQuery, (value) => {
 	const validationResult = phoneSchema.safeParse(trimmedValue);
 
 	if (!validationResult.success) {
-		customerSearchError.value = validationResult.error.issues[0]?.message || "Dữ liệu không hợp lệ";
+		customerSearchError.value = validationResult.error.issues[0]?.message || "Invalid input";
 		emit("update:selectedCustomer", null);
 		return;
 	}
@@ -84,13 +84,11 @@ watch(
 			<div class="space-y-1">
 				<UInput
 					v-model="customerSearchQuery"
-					placeholder="Nhập số điện thoại (10 số)"
+					placeholder="Enter phone number"
 					icon="i-lucide-search"
 					class="w-full"
 				/>
 				<p v-if="customerSearchError" class="text-xs text-error">{{ customerSearchError }}</p>
-				<p class="text-xs text-muted">Hệ thống chỉ tìm khi bạn nhập đúng 10 chữ số.</p>
-				<p v-if="isSearching" class="text-xs text-muted">Đang tìm khách hàng...</p>
 			</div>
 
 			<div v-if="props.selectedCustomer" class="mt-3 rounded-md border p-3">

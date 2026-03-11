@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Product } from "~/types/product";
 import type { Customer } from "~/types/customer";
+import orderService, { type CreateOrderDto } from "~/services/order.service";
 
 const toast = useToast();
 const router = useRouter();
@@ -8,6 +9,7 @@ const router = useRouter();
 // State
 const selectedProducts = ref<Array<Product & { quantity: number; selectedVariant?: string }>>([]);
 const selectedCustomer = ref<Customer | null>(null);
+const shippingAddress = ref("");
 const shippingFee = ref(0);
 const orderInfo = ref({
 	channel: "offline",
@@ -41,25 +43,31 @@ async function submit() {
 		toast.add({ title: "Error", description: "Please select a customer", color: "error" });
 		return;
 	}
+
+	const normalizedShippingAddress = shippingAddress.value.trim();
+
+	if (!normalizedShippingAddress) {
+		toast.add({ title: "Error", description: "Please enter shipping address", color: "error" });
+		return;
+	}
 	
 	submitting.value = true;
 	try {
-		const orderData = {
-			customerId: selectedCustomer.value.id,
-			channel: orderInfo.value.channel,
+		const orderData: CreateOrderDto = {
+			channel: orderInfo.value.channel as CreateOrderDto["channel"],
+			customerName: selectedCustomer.value.name,
+			phone: selectedCustomer.value.phone,
+			email: selectedCustomer.value.email,
+			shippingAddress: normalizedShippingAddress,
 			items: selectedProducts.value.map(p => ({
 				productId: p.id,
 				quantity: p.quantity,
 				price: p.price
 			})),
-			subtotal: subtotal.value,
-			shippingFee: shippingFee.value,
-			total: total.value,
-			notes: orderInfo.value.notes,
 			status: "new"
 		};
 		
-		await $fetch("/api/orders", { method: "POST", body: orderData });
+		await orderService.create(orderData);
 		toast.add({ title: "Success", description: "Order created successfully" });
 		router.push("/orders");
 	} catch (err: unknown) {
@@ -94,6 +102,11 @@ async function submit() {
 					<OrdersProductCard
 						:selected-products="selectedProducts"
 						@update:selected-products="selectedProducts = $event"
+					/>
+
+					<OrdersAddressCard
+						:shipping-address="shippingAddress"
+						@update:shipping-address="shippingAddress = $event"
 					/>
 					
 					<!-- Payment Card -->

@@ -113,13 +113,16 @@ const columns: TableColumn<Order>[] = [
 		header: "Name",
 		cell: ({ row }) => {
 			return h("div", { class: "flex items-center gap-3" }, [
-				h(UAvatar, {
-					...row.original.avatar,
-					size: "lg"
-				}),
+				h("div", {
+					class: "w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center"
+				}, [
+					h("span", { class: "text-primary font-medium" },
+						row.original.customerName?.charAt(0).toUpperCase() || "?"
+					)
+				]),
 				h("div", undefined, [
-					h("p", { class: "font-medium text-highlighted" }, row.original.name),
-					h("p", { class: "" }, `@${row.original.name}`)
+					h("p", { class: "font-medium text-highlighted" }, row.original.customerName),
+					h("p", { class: "" }, `@${row.original.customerName}`)
 				])
 			]);
 		}
@@ -146,7 +149,7 @@ const columns: TableColumn<Order>[] = [
 	{
 		accessorKey: "location",
 		header: "Location",
-		cell: ({ row }) => row.original.location
+		cell: ({ row }) => row.original.address
 	},
 	{
 		accessorKey: "status",
