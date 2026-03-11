@@ -9,6 +9,7 @@ import { CustomerModule } from './customer/customer.module';
 import { OrdersModule } from './orders/orders.module';
 import { AppConfigModule } from './app-config/app-config.module';
 import { TiktokModule } from './tiktok/tiktok.module';
+import { PaymentModule } from './payment/payment.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -45,6 +46,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 		OrdersModule,
 		AppConfigModule,
 		TiktokModule,
+		PaymentModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

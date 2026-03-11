@@ -73,6 +73,12 @@ export interface OrderStatistics {
   }[];
 }
 
+export interface CreateOrderResponse {
+  order: Order;
+  checkoutUrl: string;
+  sessionId: string;
+}
+
 class OrderService {
 	private readonly endpoint = "/orders";
 
@@ -109,7 +115,7 @@ class OrderService {
 	/**
    * Create a new order
    */
-	async create(data: CreateOrderDto): Promise<Order> {
+  async create(data: CreateOrderDto): Promise<CreateOrderResponse> {
 		return axios.post(this.endpoint, data);
 	}
 

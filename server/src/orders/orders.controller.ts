@@ -23,58 +23,76 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderChannel } from './entities/order.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PaymentService } from '../payment/payment.service';
 
 @ApiTags('Orders')
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class OrdersController {
-	constructor(private readonly ordersService: OrdersService) {}
+	constructor(
+		private readonly ordersService: OrdersService,
+		private readonly paymentService: PaymentService,
+	) {}
 
 	@Post()
 	@ApiOperation({ summary: 'Create a new order' })
 	@ApiResponse({
 		status: 201,
-		description: 'Order created successfully',
+		description: 'Order created successfully with Stripe checkout URL',
 		schema: {
 			example: {
-				id: 1,
-				channel: 'offline',
-				customerName: 'Nguyen Van A',
-				phone: '0901234567',
-				email: 'customer@example.com',
-				shippingAddress: '123 Main St, District 1, Ho Chi Minh City',
-				status: 'pending',
-				totalAmount: 60450000,
-				items: [
-					{
-						id: 1,
-						productId: 1,
-						quantity: 2,
-						price: 30000000,
-						product: {
+				order: {
+					id: 1,
+					channel: 'offline',
+					customerName: 'Nguyen Van A',
+					phone: '0901234567',
+					email: 'customer@example.com',
+					shippingAddress: '123 Main St, District 1, Ho Chi Minh City',
+					status: 'pending',
+					totalAmount: 60450000,
+					items: [
+						{
 							id: 1,
-							name: 'iPhone 15 Pro Max',
+							productId: 1,
+							quantity: 2,
+							price: 30000000,
+							product: {
+								id: 1,
+								name: 'iPhone 15 Pro Max',
+							},
 						},
-					},
-					{
-						id: 2,
-						productId: 5,
-						quantity: 1,
-						price: 450000,
-						product: {
-							id: 5,
-							name: 'AirPods Pro',
+						{
+							id: 2,
+							productId: 5,
+							quantity: 1,
+							price: 450000,
+							product: {
+								id: 5,
+								name: 'AirPods Pro',
+							},
 						},
-					},
-				],
-				createdAt: '2024-01-15T10:30:00.000Z',
+					],
+					createdAt: '2024-01-15T10:30:00.000Z',
+				},
+				checkoutUrl: 'https://checkout.stripe.com/pay/cs_test_xxx',
+				sessionId: 'cs_test_xxx',
 			},
 		},
 	})
-	@ApiResponse({ status: 400, description: 'Bad request' })
-	create(@Body() createOrderDto: CreateOrderDto) {
-		return this.ordersService.create(createOrderDto);
+	@ApiResponse({
+		status: 400,
+		description: 'Bad request or unable to create Stripe checkout session',
+	})
+	async create(@Body() createOrderDto: CreateOrderDto) {
+		const order = await this.ordersService.create(createOrderDto);
+		const checkout = await this.paymentService.createCheckoutSession(order.id);
+
+		return {
+			order,
+			checkoutUrl: checkout.url,
+			sessionId: checkout.sessionId,
+		};
 	}
 
 	@Get()

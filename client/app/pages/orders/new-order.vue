@@ -2,6 +2,7 @@
 import type { Product } from "~/types/product";
 import type { Customer } from "~/types/customer";
 import orderService, { type CreateOrderDto } from "~/services/order.service";
+import paymentService from "~/services/payment.service";
 
 const toast = useToast();
 const router = useRouter();
@@ -18,6 +19,11 @@ const orderInfo = ref({
 	notes: ""
 });
 const submitting = ref(false);
+const showCheckoutQrModal = ref(false);
+const checkoutUrl = ref("");
+const checkoutSessionId = ref("");
+const paymentPolling = ref(false);
+let paymentPollingTimer: ReturnType<typeof setInterval> | null = null;
 
 // Computed
 const subtotal = computed(() => {
@@ -30,6 +36,50 @@ const itemCount = computed(() => {
 
 const total = computed(() => {
 	return subtotal.value + shippingFee.value;
+});
+
+const checkoutQrUrl = computed(() => {
+	if (!checkoutUrl.value) return "";
+	return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(checkoutUrl.value)}`;
+});
+
+async function copyCheckoutUrl() {
+	if (!checkoutUrl.value) return;
+
+	await navigator.clipboard.writeText(checkoutUrl.value);
+	toast.add({ title: "Copied", description: "Payment link copied to clipboard" });
+}
+
+function stopPaymentPolling() {
+	if (paymentPollingTimer) {
+		clearInterval(paymentPollingTimer);
+		paymentPollingTimer = null;
+	}
+	paymentPolling.value = false;
+}
+
+function startPaymentPolling() {
+	if (!checkoutSessionId.value || paymentPolling.value) return;
+
+	paymentPolling.value = true;
+	paymentPollingTimer = setInterval(async () => {
+		try {
+			const status = await paymentService.getSessionStatus(checkoutSessionId.value);
+
+			if (status.paid) {
+				stopPaymentPolling();
+				showCheckoutQrModal.value = false;
+				toast.add({ title: "Payment Success", description: "Customer payment has been completed." });
+				router.push("/orders");
+			}
+		} catch {
+			// Keep polling; transient errors can happen when network is unstable.
+		}
+	}, 3000);
+}
+
+onBeforeUnmount(() => {
+	stopPaymentPolling();
 });
 
 // Submit order
@@ -67,7 +117,17 @@ async function submit() {
 			status: "new"
 		};
 		
-		await orderService.create(orderData);
+		const response = await orderService.create(orderData);
+
+		if (response.checkoutUrl) {
+			checkoutUrl.value = response.checkoutUrl;
+			checkoutSessionId.value = response.sessionId;
+			showCheckoutQrModal.value = true;
+			startPaymentPolling();
+			toast.add({ title: "Success", description: "QR payment is ready. Ask customer to scan." });
+			return;
+		}
+
 		toast.add({ title: "Success", description: "Order created successfully" });
 		router.push("/orders");
 	} catch (err: unknown) {
@@ -156,6 +216,43 @@ async function submit() {
 					</div>
 				</div>
 			</div>
+
+			<UModal v-model:open="showCheckoutQrModal" title="Scan to Pay">
+				<template #body>
+					<div class="flex flex-col items-center gap-4 py-2">
+						<img
+							v-if="checkoutQrUrl"
+							:src="checkoutQrUrl"
+							alt="Stripe checkout QR"
+							class="w-64 h-64 rounded-lg border border-default"
+						>
+						<p class="text-sm text-muted text-center">
+							Customer can scan this QR code using their phone to open Stripe Checkout.
+						</p>
+						<UInput
+							:model-value="checkoutUrl"
+							readonly
+							class="w-full"
+						/>
+					</div>
+				</template>
+
+				<template #footer>
+					<div class="flex w-full gap-2">
+						<UButton
+							label="Copy payment link"
+							variant="outline"
+							class="flex-1"
+							@click="copyCheckoutUrl"
+						/>
+						<UButton
+							label="Done"
+							class="flex-1"
+							@click="stopPaymentPolling(); showCheckoutQrModal = false; router.push('/orders')"
+						/>
+					</div>
+				</template>
+			</UModal>
 		</template>
 	</UDashboardPanel>
 </template>

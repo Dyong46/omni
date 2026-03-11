@@ -9,8 +9,10 @@ const UButton = resolveComponent("UButton");
 const UBadge = resolveComponent("UBadge");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
 const UCheckbox = resolveComponent("UCheckbox");
+const NuxtLink = resolveComponent("NuxtLink");
 
 const toast = useToast();
+const router = useRouter();
 const table = useTemplateRef("table");
 
 const columnFilters = ref([{
@@ -60,11 +62,14 @@ function getRowItems(row: Row<Order>) {
 			type: "separator"
 		},
 		{
-			label: "View customer details",
-			icon: "i-lucide-list"
+			label: "View order details",
+			icon: "i-lucide-list",
+			onSelect() {
+				router.push(`/orders/${row.original.id}`);
+			}
 		},
 		{
-			label: "View customer payments",
+			label: "View payment status",
 			icon: "i-lucide-wallet"
 		},
 		{
@@ -120,7 +125,14 @@ const columns: TableColumn<Order>[] = [
 					)
 				]),
 				h("div", undefined, [
-					h("p", { class: "font-medium text-highlighted" }, row.original.customerName),
+					h(
+						NuxtLink,
+						{
+							to: `/orders/${row.original.id}`,
+							class: "font-medium text-highlighted hover:underline"
+						},
+						() => row.original.customerName || `Order #${row.original.id}`
+					),
 					h("p", { class: "" }, `@${row.original.customerName}`)
 				])
 			]);
@@ -167,6 +179,23 @@ const columns: TableColumn<Order>[] = [
 		accessorKey: "shippingAddress",
 		header: "Shipping Address",
 		cell: ({ row }) => row.original.shippingAddress ?? "—"
+	},
+	{
+		id: "payment",
+		header: "Payment",
+		cell: ({ row }) => {
+			const paymentStatus = row.original.status === "paid" ? "paid" : "unpaid";
+			const colorMap = {
+				paid: "success" as const,
+				unpaid: "warning" as const
+			};
+
+			return h(
+				UBadge,
+				{ class: "capitalize", variant: "subtle", color: colorMap[paymentStatus] },
+				() => paymentStatus
+			);
+		}
 	},
 	{
 		accessorKey: "status",
