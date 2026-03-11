@@ -65,6 +65,11 @@ export class OrdersService {
 		}
 
 		// Create order
+		const defaultPaymentStatus =
+			createOrderDto.channel === OrderChannel.TIKTOK
+				? OrderPaymentStatus.PAID
+				: OrderPaymentStatus.UNPAID;
+
 		const order = this.ordersRepository.create({
 			channel: createOrderDto.channel,
 			customerName: createOrderDto.customerName ?? null,
@@ -72,7 +77,7 @@ export class OrdersService {
 			email: createOrderDto.email ?? null,
 			shippingAddress: createOrderDto.shippingAddress ?? null,
 			status: createOrderDto.status ?? 'new',
-			paymentStatus: createOrderDto.paymentStatus ?? OrderPaymentStatus.UNPAID,
+			paymentStatus: createOrderDto.paymentStatus ?? defaultPaymentStatus,
 			totalAmount,
 			items,
 		});
