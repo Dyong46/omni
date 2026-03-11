@@ -7,12 +7,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { StringValue } from 'ms';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +23,33 @@ export class AuthService {
 		private readonly userRepository: Repository<User>,
 		private readonly jwtService: JwtService,
 	) {}
+
+	private async generateTokens(payload: JwtPayload) {
+		const accessExpiresIn =
+			(process.env.JWT_EXPIRES_IN as StringValue | undefined) || '1d';
+		const refreshExpiresIn =
+			(process.env.JWT_REFRESH_EXPIRES_IN as StringValue | undefined) || '7d';
+
+		const refreshSecret = process.env.JWT_REFRESH_SECRET;
+		if (!refreshSecret) {
+			throw new Error('JWT_REFRESH_SECRET environment variable is not defined');
+		}
+
+		const [accessToken, refreshToken] = await Promise.all([
+			this.jwtService.signAsync(payload, {
+				expiresIn: accessExpiresIn,
+			}),
+			this.jwtService.signAsync(
+				{ ...payload, tokenType: 'refresh' },
+				{ secret: refreshSecret, expiresIn: refreshExpiresIn },
+			),
+		]);
+
+		return {
+			access_token: accessToken,
+			refresh_token: refreshToken,
+		};
+	}
 
 	/**
 	 * Login - Authenticate user and return JWT token
@@ -47,9 +76,11 @@ export class AuthService {
 			role: user.role,
 		};
 
-		// Return token and user info (excluding password)
+		const tokens = await this.generateTokens(payload);
+
+		// Return tokens and user info (excluding password)
 		return {
-			access_token: await this.jwtService.signAsync(payload),
+			...tokens,
 			user: {
 				id: user.id,
 				username: user.username,
@@ -58,6 +89,42 @@ export class AuthService {
 				updatedAt: user.updatedAt,
 			},
 		};
+	}
+
+	async refreshToken(refreshToken: string) {
+		if (!refreshToken) {
+			throw new UnauthorizedException('Refresh token is required');
+		}
+
+		const refreshSecret = process.env.JWT_REFRESH_SECRET;
+		if (!refreshSecret) {
+			throw new UnauthorizedException('JWT_REFRESH_SECRET is not configured');
+		}
+
+		let payload: JwtPayload & { tokenType?: string };
+
+		try {
+			payload = await this.jwtService.verifyAsync(refreshToken, {
+				secret: refreshSecret,
+			});
+		} catch {
+			throw new UnauthorizedException('Invalid refresh token');
+		}
+
+		if (payload.tokenType !== 'refresh') {
+			throw new UnauthorizedException('Invalid token type');
+		}
+
+		const user = await this.validateUser(payload.sub);
+		if (!user) {
+			throw new UnauthorizedException('User not found');
+		}
+
+		return this.generateTokens({
+			sub: user.id,
+			username: user.username,
+			role: user.role,
+		});
 	}
 
 	/**

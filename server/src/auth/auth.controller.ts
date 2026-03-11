@@ -25,6 +25,7 @@ import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -72,6 +73,7 @@ export class AuthController {
 		schema: {
 			example: {
 				access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+				refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 				user: {
 					id: 1,
 					username: 'admin',
@@ -88,6 +90,37 @@ export class AuthController {
 	})
 	async login(@Body() loginDto: LoginDto) {
 		return this.authService.login(loginDto);
+	}
+
+	/**
+	 * Refresh tokens
+	 */
+	@Public()
+	@Post('refresh')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		summary: 'Refresh access token',
+		description: 'Get new access token and refresh token from a valid refresh token',
+	})
+	@ApiBody({
+		type: RefreshTokenDto,
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Token refreshed successfully',
+		schema: {
+			example: {
+				access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+				refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+			},
+		},
+	})
+	@ApiResponse({
+		status: 401,
+		description: 'Invalid refresh token',
+	})
+	async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
+		return this.authService.refreshToken(refreshTokenDto.refresh_token);
 	}
 
 	/**

@@ -15,6 +15,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
 	access_token: string;
+	refresh_token: string;
 	user: AuthUser;
 }
 
@@ -32,6 +33,13 @@ class AuthService {
 	 */
 	async login(credentials: LoginRequest): Promise<LoginResponse> {
 		return axios.post(`${this.endpoint}/login`, credentials);
+	}
+
+	/**
+	 * Refresh access token
+	 */
+	async refreshToken(refreshToken: string): Promise<Pick<LoginResponse, "access_token" | "refresh_token">> {
+		return axios.post(`${this.endpoint}/refresh`, { refresh_token: refreshToken });
 	}
 
 	/**
@@ -66,8 +74,9 @@ class AuthService {
 	 * Logout (client-side only - clear token)
 	 */
 	logout(): void {
-		if (typeof globalThis.window !== "undefined") {
+		if (globalThis.window !== undefined) {
 			localStorage.removeItem("token");
+			localStorage.removeItem("refresh_token");
 		}
 	}
 }

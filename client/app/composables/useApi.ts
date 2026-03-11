@@ -10,8 +10,10 @@ export const useApi = <T>(
 	const toast = useToast();
 	const router = useRouter();
 
-	// Get token from store
-	const token = authStore.getToken;
+	// Prefer latest token from localStorage because axios interceptor can refresh it.
+	const token = import.meta.client
+		? localStorage.getItem("token") || authStore.getToken
+		: authStore.getToken;
 
 	return useFetch<ApiResponse<T>>(url, {
 		baseURL: config.public.apiBase,

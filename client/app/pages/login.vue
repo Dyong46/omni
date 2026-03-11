@@ -35,7 +35,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 		});
 
 		// Update store with auth data
-		authStore.setAuth(response.access_token, response.user);
+		authStore.setAuth(response.access_token, response.user, response.refresh_token);
 
 		toast.add({
 			title: "Login successful",
