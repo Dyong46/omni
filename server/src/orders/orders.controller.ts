@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { GetRevenueChartDto } from './dto/get-revenue-chart.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderChannel } from './entities/order.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -214,6 +215,54 @@ export class OrdersController {
 	})
 	getStatistics() {
 		return this.ordersService.getStatistics();
+	}
+
+	@Get('revenue-chart')
+	@ApiOperation({ summary: 'Get revenue chart data' })
+	@ApiQuery({
+		name: 'period',
+		required: false,
+		enum: ['daily', 'weekly', 'monthly'],
+		description: 'Aggregation period for chart buckets',
+	})
+	@ApiQuery({
+		name: 'startDate',
+		required: false,
+		type: String,
+		description: 'Chart start date in ISO format',
+	})
+	@ApiQuery({
+		name: 'endDate',
+		required: false,
+		type: String,
+		description: 'Chart end date in ISO format',
+	})
+	@ApiResponse({
+		status: 200,
+		description: 'Revenue chart data',
+		schema: {
+			example: {
+				period: 'daily',
+				startDate: '2026-03-01',
+				endDate: '2026-03-31',
+				totalRevenue: 128000000,
+				totalOrders: 12,
+				points: [
+					{
+						date: '2026-03-01',
+						amount: 24500000,
+						orders: 2,
+					},
+				],
+			},
+		},
+	})
+	getRevenueChart(@Query() query: GetRevenueChartDto) {
+		return this.ordersService.getRevenueChart(
+			query.period,
+			query.startDate,
+			query.endDate,
+		);
 	}
 
 	@Get('recent')

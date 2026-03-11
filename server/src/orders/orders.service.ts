@@ -12,8 +12,24 @@ import {
 } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { RevenueChartPeriod } from './dto/get-revenue-chart.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Product } from '../products/entities/product.entity';
+
+export interface RevenueChartPoint {
+	date: string;
+	amount: number;
+	orders: number;
+}
+
+export interface RevenueChartResponse {
+	period: RevenueChartPeriod;
+	startDate: string;
+	endDate: string;
+	totalRevenue: number;
+	totalOrders: number;
+	points: RevenueChartPoint[];
+}
 
 @Injectable()
 export class OrdersService {
@@ -251,11 +267,121 @@ export class OrdersService {
 		};
 	}
 
+	async getRevenueChart(
+		period: RevenueChartPeriod = 'daily',
+		startDate?: string,
+		endDate?: string,
+	): Promise<RevenueChartResponse> {
+		const normalizedPeriod = period ?? 'daily';
+		const normalizedEndDate = this.parseDate(endDate) ?? new Date();
+		const normalizedStartDate =
+			this.parseDate(startDate) ??
+			this.getDefaultStartDate(normalizedEndDate, normalizedPeriod);
+
+		normalizedStartDate.setHours(0, 0, 0, 0);
+		normalizedEndDate.setHours(23, 59, 59, 999);
+
+		if (normalizedStartDate > normalizedEndDate) {
+			throw new BadRequestException('startDate must be earlier than or equal to endDate');
+		}
+
+		const orders = await this.ordersRepository
+			.createQueryBuilder('order')
+			.select(['order.createdAt', 'order.totalAmount'])
+			.where('order.createdAt >= :startDate', { startDate: normalizedStartDate })
+			.andWhere('order.createdAt <= :endDate', { endDate: normalizedEndDate })
+			.orderBy('order.createdAt', 'ASC')
+			.getMany();
+
+		const buckets = new Map<string, RevenueChartPoint>();
+
+		for (const order of orders) {
+			const bucketStart = this.getBucketStartDate(order.createdAt, normalizedPeriod);
+			const bucketKey = this.formatDateKey(bucketStart);
+			const currentBucket = buckets.get(bucketKey) ?? {
+				date: bucketKey,
+				amount: 0,
+				orders: 0,
+			};
+
+			currentBucket.amount += Number(order.totalAmount || 0);
+			currentBucket.orders += 1;
+
+			buckets.set(bucketKey, currentBucket);
+		}
+
+		const points = Array.from(buckets.values()).sort((left, right) =>
+			left.date.localeCompare(right.date),
+		);
+
+		return {
+			period: normalizedPeriod,
+			startDate: this.formatDateKey(normalizedStartDate),
+			endDate: this.formatDateKey(normalizedEndDate),
+			totalRevenue: points.reduce((sum, point) => sum + point.amount, 0),
+			totalOrders: orders.length,
+			points,
+		};
+	}
+
 	async getRecentOrders(limit: number = 10): Promise<Order[]> {
 		return this.ordersRepository.find({
 			relations: ['items', 'items.product'],
 			order: { createdAt: 'DESC' },
 			take: limit,
 		});
+	}
+
+	private parseDate(value?: string): Date | null {
+		if (!value) {
+			return null;
+		}
+
+		const parsedDate = new Date(value);
+
+		if (Number.isNaN(parsedDate.getTime())) {
+			throw new BadRequestException(`Invalid date value: ${value}`);
+		}
+
+		return parsedDate;
+	}
+
+	private getDefaultStartDate(date: Date, period: RevenueChartPeriod): Date {
+		const startDate = new Date(date);
+
+		if (period === 'monthly') {
+			startDate.setMonth(startDate.getMonth() - 11);
+			startDate.setDate(1);
+			return startDate;
+		}
+
+		if (period === 'weekly') {
+			startDate.setDate(startDate.getDate() - 83);
+			return startDate;
+		}
+
+		startDate.setDate(startDate.getDate() - 29);
+		return startDate;
+	}
+
+	private getBucketStartDate(date: Date, period: RevenueChartPeriod): Date {
+		const bucketStart = new Date(date);
+		bucketStart.setHours(0, 0, 0, 0);
+
+		if (period === 'monthly') {
+			bucketStart.setDate(1);
+			return bucketStart;
+		}
+
+		if (period === 'weekly') {
+			bucketStart.setDate(bucketStart.getDate() - bucketStart.getDay());
+			return bucketStart;
+		}
+
+		return bucketStart;
+	}
+
+	private formatDateKey(date: Date): string {
+		return date.toISOString().slice(0, 10);
 	}
 }

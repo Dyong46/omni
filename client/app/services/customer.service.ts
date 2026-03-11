@@ -71,6 +71,15 @@ class CustomerService {
 	async delete(id: number): Promise<void> {
 		return axios.delete(`${this.endpoint}/${id}`);
 	}
+
+	/**
+   * Get total customer count
+   */
+	async count(): Promise<number> {
+		const res: { count: number } = await axios.get(`${this.endpoint}/stats/count`);
+
+		return res.count;
+	}
 }
 
 export default new CustomerService();

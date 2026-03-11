@@ -77,6 +77,27 @@ export interface OrderStatistics {
   }[];
 }
 
+export interface RevenueChartPoint {
+	date: string;
+	amount: number;
+	orders: number;
+}
+
+export interface RevenueChartResponse {
+	period: "daily" | "weekly" | "monthly";
+	startDate: string;
+	endDate: string;
+	totalRevenue: number;
+	totalOrders: number;
+	points: RevenueChartPoint[];
+}
+
+export interface RevenueChartFilters {
+	period: "daily" | "weekly" | "monthly";
+	startDate: string;
+	endDate: string;
+}
+
 export interface CreateOrderResponse {
   order: Order;
   checkoutUrl: string;
@@ -98,6 +119,15 @@ class OrderService {
    */
 	async getStatistics(): Promise<OrderStatistics> {
 		return axios.get(`${this.endpoint}/statistics`);
+	}
+
+	/**
+   * Get revenue chart data
+   */
+	async getRevenueChart(filters: RevenueChartFilters): Promise<RevenueChartResponse> {
+		return axios.get(`${this.endpoint}/revenue-chart`, {
+			params: filters
+		});
 	}
 
 	/**
