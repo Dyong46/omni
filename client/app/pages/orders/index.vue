@@ -14,6 +14,7 @@ const NuxtLink = resolveComponent("NuxtLink");
 const toast = useToast();
 const router = useRouter();
 const table = useTemplateRef("table");
+const exporting = ref(false);
 
 const columnFilters = ref([{
 	id: "email",
@@ -40,6 +41,60 @@ const loadOrders = async () => {
 onMounted(() => {
 	loadOrders();
 });
+
+async function exportOrders() {
+	if (exporting.value) return;
+
+	exporting.value = true;
+	try {
+		const orders = await orderService.getAll();
+
+		if (!orders.length) {
+			toast.add({
+				title: "No data",
+				description: "There are no orders to export.",
+				color: "warning"
+			});
+			return;
+		}
+
+		const rows = orders.map(order => ({
+			"Order ID": order.id,
+			"Customer Name": order.customerName,
+			Phone: order.phone,
+			Email: order.email ?? "",
+			Channel: order.channel,
+			"Shipping Address": order.shippingAddress,
+			"Order Status": order.status,
+			"Payment Status": order.paymentStatus,
+			"Total Amount": order.totalAmount,
+			"Created At": order.createdAt,
+			"Updated At": order.updatedAt
+		}));
+
+		const XLSX = await import("xlsx");
+		const worksheet = XLSX.utils.json_to_sheet(rows);
+		const workbook = XLSX.utils.book_new();
+
+		XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
+		XLSX.writeFile(workbook, `orders-${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+		toast.add({
+			title: "Export completed",
+			description: "Orders were exported to XLSX successfully.",
+			color: "success"
+		});
+	} catch (error) {
+		console.error("Failed to export orders:", error);
+		toast.add({
+			title: "Export failed",
+			description: "Could not export orders to XLSX.",
+			color: "error"
+		});
+	} finally {
+		exporting.value = false;
+	}
+}
 
 function getRowItems(row: Row<Order>) {
 	return [
@@ -279,7 +334,13 @@ const pagination = ref({
 				</template>
 
 				<template #right>
-					<UButton label="Export data" icon="i-lucide-download" variant="outline" />
+					<UButton
+						label="Export data"
+						icon="i-lucide-download"
+						variant="outline"
+						:loading="exporting"
+						@click="exportOrders"
+					/>
 					<UButton label="Create order" icon="i-lucide-plus" to="orders/new-order" />
 				</template>
 			</UDashboardNavbar>
