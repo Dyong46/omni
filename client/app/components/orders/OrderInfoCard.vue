@@ -8,9 +8,9 @@ const props = defineProps<{
 	};
 }>();
 
-const emit = defineEmits<{
-	(e: "update:orderInfo", value: typeof props.orderInfo): void;
-}>();
+const emit = defineEmits<
+	(e: "update:orderInfo", value: typeof props.orderInfo) => void
+>();
 
 const localOrderInfo = computed({
 	get: () => props.orderInfo,
@@ -30,7 +30,11 @@ const localOrderInfo = computed({
 				<div class="block text-sm font-medium mb-2">Channel</div>
 				<USelect
 					v-model="localOrderInfo.channel"
-					:items="['Draft', 'POS']"
+					:items="[
+						{ label: 'Offline', value: 'offline' },
+						{ label: 'TikTok Shop', value: 'tiktok' },
+						{ label: 'Shopee', value: 'shopee' }
+					]"
 					class="min-w-48"
 					:ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
 				/>
