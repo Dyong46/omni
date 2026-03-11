@@ -22,6 +22,7 @@ const submitting = ref(false);
 const showCheckoutQrModal = ref(false);
 const checkoutUrl = ref("");
 const checkoutSessionId = ref("");
+const orderId = ref("");
 const paymentPolling = ref(false);
 let paymentPollingTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -70,13 +71,22 @@ function startPaymentPolling() {
 				stopPaymentPolling();
 				showCheckoutQrModal.value = false;
 				toast.add({ title: "Payment Success", description: "Customer payment has been completed." });
-				router.push("/orders");
+				// Add delay to ensure toast is displayed before navigation
+				await new Promise(resolve => setTimeout(resolve, 500));
+				router.push(`/orders/${orderId.value}`);
 			}
 		} catch {
 			// Keep polling; transient errors can happen when network is unstable.
 		}
 	}, 3000);
 }
+
+// Watch for modal close and stop polling if user exits
+watch(showCheckoutQrModal, (isOpen) => {
+	if (!isOpen) {
+		stopPaymentPolling();
+	}
+});
 
 onBeforeUnmount(() => {
 	stopPaymentPolling();
@@ -120,6 +130,7 @@ async function submit() {
 		const response = await orderService.create(orderData);
 
 		if (response.checkoutUrl) {
+			orderId.value = response.order.id.toString();
 			checkoutUrl.value = response.checkoutUrl;
 			checkoutSessionId.value = response.sessionId;
 			showCheckoutQrModal.value = true;
@@ -248,7 +259,7 @@ async function submit() {
 						<UButton
 							label="Done"
 							class="flex-1"
-							@click="stopPaymentPolling(); showCheckoutQrModal = false; router.push('/orders')"
+							@click="stopPaymentPolling(); showCheckoutQrModal = false; router.push(`/orders/${orderId}`)"
 						/>
 					</div>
 				</template>
