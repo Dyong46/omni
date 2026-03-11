@@ -70,7 +70,10 @@ function getRowItems(row: Row<Order>) {
 		},
 		{
 			label: "View payment status",
-			icon: "i-lucide-wallet"
+			icon: "i-lucide-wallet",
+			onSelect() {
+				router.push(`/orders/${row.original.id}`);
+			}
 		},
 		{
 			type: "separator"
@@ -184,10 +187,11 @@ const columns: TableColumn<Order>[] = [
 		id: "payment",
 		header: "Payment",
 		cell: ({ row }) => {
-			const paymentStatus = row.original.status === "paid" ? "paid" : "unpaid";
+			const paymentStatus = row.original.paymentStatus ?? "unpaid";
 			const colorMap = {
 				paid: "success" as const,
-				unpaid: "warning" as const
+				unpaid: "warning" as const,
+				refunded: "neutral" as const
 			};
 
 			return h(
@@ -202,13 +206,16 @@ const columns: TableColumn<Order>[] = [
 		header: "Status",
 		filterFn: "equals",
 		cell: ({ row }) => {
-			const color = {
-				subscribed: "success" as const,
-				unsubscribed: "error" as const,
-				bounced: "warning" as const
-			}[row.original.status];
+			const colorMap: Record<string, "neutral" | "warning" | "success" | "error"> = {
+				new: "warning",
+				pending: "warning",
+				processing: "neutral",
+				delivered: "success",
+				completed: "success",
+				cancelled: "error"
+			};
 
-			return h(UBadge, { class: "capitalize", variant: "subtle", color }, () =>
+			return h(UBadge, { class: "capitalize", variant: "subtle", color: colorMap[row.original.status] ?? "neutral" }, () =>
 				row.original.status
 			);
 		}
@@ -310,8 +317,10 @@ const pagination = ref({
 						:items="[
 							{ label: 'All orders', value: 'all' },
 							{ label: 'New orders', value: 'new' },
-							{ label: 'Undelivered', value: 'undelivered' },
-							{ label: 'Unpaid', value: 'unpaid' }
+							{ label: 'Pending orders', value: 'pending' },
+							{ label: 'Processing orders', value: 'processing' },
+							{ label: 'Delivered orders', value: 'delivered' },
+							{ label: 'Cancelled orders', value: 'cancelled' }
 						]"
 						:ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
 						placeholder="Filter status"

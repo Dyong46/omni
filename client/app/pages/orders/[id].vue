@@ -7,12 +7,12 @@ const status = ref<"idle" | "pending" | "success" | "error">("idle");
 
 const orderId = computed(() => Number(route.params.id));
 
-const paymentStatus = computed(() => {
-	return order.value?.status === "paid" ? "paid" : "unpaid";
-});
+const paymentStatus = computed(() => order.value?.paymentStatus ?? "unpaid");
 
 const paymentColor = computed(() => {
-	return paymentStatus.value === "paid" ? "success" : "warning";
+	if (paymentStatus.value === "paid") return "success";
+	if (paymentStatus.value === "refunded") return "neutral";
+	return "warning";
 });
 
 async function loadOrder() {

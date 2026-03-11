@@ -5,7 +5,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order, OrderChannel } from './entities/order.entity';
+import {
+	Order,
+	OrderChannel,
+	OrderPaymentStatus,
+} from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -62,7 +66,13 @@ export class OrdersService {
 
 		// Create order
 		const order = this.ordersRepository.create({
-			...createOrderDto,
+			channel: createOrderDto.channel,
+			customerName: createOrderDto.customerName ?? null,
+			phone: createOrderDto.phone,
+			email: createOrderDto.email ?? null,
+			shippingAddress: createOrderDto.shippingAddress ?? null,
+			status: createOrderDto.status ?? 'new',
+			paymentStatus: createOrderDto.paymentStatus ?? OrderPaymentStatus.UNPAID,
 			totalAmount,
 			items,
 		});
@@ -173,14 +183,17 @@ export class OrdersService {
 		}
 
 		// Update other fields
-		Object.assign(order, {
-			channel: updateOrderDto.channel ?? order.channel,
-			customerName: updateOrderDto.customerName ?? order.customerName,
-			phone: updateOrderDto.phone ?? order.phone,
-			email: updateOrderDto.email ?? order.email,
-			shippingAddress: updateOrderDto.shippingAddress ?? order.shippingAddress,
-			status: updateOrderDto.status ?? order.status,
-		});
+		order.channel = updateOrderDto.channel ?? order.channel;
+		order.customerName = updateOrderDto.customerName ?? order.customerName;
+		order.phone = updateOrderDto.phone ?? order.phone;
+		order.email = updateOrderDto.email ?? order.email;
+		order.shippingAddress =
+			updateOrderDto.shippingAddress ?? order.shippingAddress;
+		order.status = updateOrderDto.status ?? order.status;
+
+		if (updateOrderDto.paymentStatus) {
+			order.paymentStatus = updateOrderDto.paymentStatus;
+		}
 
 		return this.ordersRepository.save(order);
 	}
@@ -223,7 +236,7 @@ export class OrdersService {
 		const totalRevenue = await this.ordersRepository
 			.createQueryBuilder('order')
 			.select('SUM(order.totalAmount)', 'total')
-			.getRawOne();
+			.getRawOne<{ total: string | null }>();
 
 		return {
 			totalOrders,

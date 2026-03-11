@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
-import { Order } from '../orders/entities/order.entity';
+import { Order, OrderPaymentStatus } from '../orders/entities/order.entity';
 
 interface StripeWebhookPayload {
 	type?: string;
@@ -107,7 +107,10 @@ export class PaymentService {
 			: undefined;
 
 		if (paid && orderId) {
-			await this.ordersRepository.update({ id: orderId }, { status: 'paid' });
+			await this.ordersRepository.update(
+				{ id: orderId },
+				{ paymentStatus: OrderPaymentStatus.PAID },
+			);
 		}
 
 		return {
@@ -157,7 +160,10 @@ export class PaymentService {
 			: undefined;
 
 		if (paid && orderId) {
-			await this.ordersRepository.update({ id: orderId }, { status: 'paid' });
+			await this.ordersRepository.update(
+				{ id: orderId },
+				{ paymentStatus: OrderPaymentStatus.PAID },
+			);
 		}
 
 		return {

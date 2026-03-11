@@ -49,7 +49,8 @@ export class OrdersController {
 					phone: '0901234567',
 					email: 'customer@example.com',
 					shippingAddress: '123 Main St, District 1, Ho Chi Minh City',
-					status: 'pending',
+						status: 'new',
+						paymentStatus: 'unpaid',
 					totalAmount: 60450000,
 					items: [
 						{
@@ -134,6 +135,7 @@ export class OrdersController {
 					email: 'customer2@example.com',
 					shippingAddress: '456 Street, District 3, Ho Chi Minh City',
 					status: 'delivered',
+						paymentStatus: 'paid',
 					totalAmount: 25000000,
 					items: [
 						{

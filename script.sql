@@ -50,6 +50,7 @@ CREATE TABLE orders (
     email VARCHAR(150),
     shipping_address TEXT,
     status VARCHAR(50),
+    payment_status ENUM('unpaid', 'paid', 'refunded') NOT NULL DEFAULT 'unpaid',
     total_amount INT NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

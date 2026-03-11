@@ -1,6 +1,7 @@
 import axios from "~/utils/axios";
 
 export type OrderChannel = "offline" | "shopee" | "tiktok";
+export type OrderPaymentStatus = "unpaid" | "paid" | "refunded";
 
 export interface Order {
   avatar?: string;
@@ -12,6 +13,7 @@ export interface Order {
   email?: string;
   shippingAddress: string;
   status: string;
+  paymentStatus: OrderPaymentStatus;
   totalAmount: number;
   items?: OrderItem[];
   createdAt: string;
@@ -36,6 +38,7 @@ export interface CreateOrderDto {
   email?: string;
   shippingAddress?: string;
   status?: string;
+  paymentStatus?: OrderPaymentStatus;
   items: {
     productId: number;
     quantity: number;
@@ -50,6 +53,7 @@ export interface UpdateOrderDto {
   email?: string;
   shippingAddress?: string;
   status?: string;
+  paymentStatus?: OrderPaymentStatus;
 }
 
 export interface OrderFilters {

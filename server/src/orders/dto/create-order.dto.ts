@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OrderChannel } from '../entities/order.entity';
+import { OrderChannel, OrderPaymentStatus } from '../entities/order.entity';
 
 export class CreateOrderItemDto {
 	@ApiProperty({
@@ -91,6 +91,15 @@ export class CreateOrderDto {
 	@IsOptional()
 	@IsString()
 	status?: string;
+
+	@ApiPropertyOptional({
+		description: 'Payment status',
+		enum: OrderPaymentStatus,
+		example: OrderPaymentStatus.UNPAID,
+	})
+	@IsOptional()
+	@IsEnum(OrderPaymentStatus)
+	paymentStatus?: OrderPaymentStatus;
 
 	@ApiProperty({
 		description: 'Order items',

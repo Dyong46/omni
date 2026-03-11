@@ -13,6 +13,12 @@ export enum OrderChannel {
 	SHOPEE = 'shopee',
 }
 
+export enum OrderPaymentStatus {
+	UNPAID = 'unpaid',
+	PAID = 'paid',
+	REFUNDED = 'refunded',
+}
+
 @Entity('orders')
 export class Order {
 	@PrimaryGeneratedColumn()
@@ -24,7 +30,12 @@ export class Order {
 	})
 	channel: OrderChannel;
 
-	@Column({ type: 'varchar', length: 150, name: 'customer_name', nullable: true })
+	@Column({
+		type: 'varchar',
+		length: 150,
+		name: 'customer_name',
+		nullable: true,
+	})
 	customerName: string | null;
 
 	@Column({ type: 'varchar', length: 20 })
@@ -38,6 +49,14 @@ export class Order {
 
 	@Column({ type: 'varchar', length: 50, nullable: true })
 	status: string | null;
+
+	@Column({
+		type: 'enum',
+		enum: OrderPaymentStatus,
+		name: 'payment_status',
+		default: OrderPaymentStatus.UNPAID,
+	})
+	paymentStatus: OrderPaymentStatus;
 
 	@Column({ type: 'int', name: 'total_amount', default: 0 })
 	totalAmount: number;
