@@ -10,11 +10,14 @@ import { OrdersModule } from './orders/orders.module';
 import { AppConfigModule } from './app-config/app-config.module';
 import { TiktokModule } from './tiktok/tiktok.module';
 import { PaymentModule } from './payment/payment.module';
+import { MediaModule } from './media/media.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import appConfig from './config/app.config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'node:path';
 
 @Module({
 	imports: [
@@ -38,6 +41,11 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 			inject: [ConfigService],
 		}),
 
+		ServeStaticModule.forRoot({
+			rootPath: join(process.cwd(), 'uploads'),
+			serveRoot: '/uploads',
+			serveStaticOptions: { index: false },
+		}),
 		AuthModule,
 		UsersModule,
 		CategoriesModule,
@@ -47,6 +55,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 		AppConfigModule,
 		TiktokModule,
 		PaymentModule,
+		MediaModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
