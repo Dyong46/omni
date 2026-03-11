@@ -6,10 +6,7 @@ import { Product } from '../products/entities/product.entity';
 import { OrdersModule } from '../orders/orders.module';
 
 @Module({
-	imports: [
-		TypeOrmModule.forFeature([Product]),
-		OrdersModule,
-	],
+	imports: [TypeOrmModule.forFeature([Product]), OrdersModule],
 	controllers: [TiktokController],
 	providers: [TiktokService],
 })
