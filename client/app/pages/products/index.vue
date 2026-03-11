@@ -70,7 +70,7 @@ const status = ref<"idle" | "pending" | "success" | "error">("idle");
 const loadProducts = async () => {
 	status.value = "pending";
 	try {
-		const params: any = {};
+		const params: object = {};
 
 		if (searchQuery.value) params.q = searchQuery.value;
 		if (categoryFilter.value !== "all") params.categoryId = categoryFilter.value;

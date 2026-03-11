@@ -1,18 +1,10 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
 	subtotal: number;
 	shippingFee: number;
 	total: number;
+	itemCount: number;
 }>();
-
-const emit = defineEmits<{
-	(e: "update:shippingFee", value: number): void;
-}>();
-
-const localShippingFee = computed({
-	get: () => props.shippingFee,
-	set: (value) => emit("update:shippingFee", value)
-});
 
 </script>
 
@@ -25,7 +17,7 @@ const localShippingFee = computed({
 		<div class="space-y-3">
 			<div class="flex justify-between items-center">
 				<span class="text-light">Subtotal</span>
-				<span>2 products</span>
+				<span>{{ itemCount }} item{{ itemCount === 1 ? '' : 's' }}</span>
 				<span class="">{{ subtotal.toLocaleString('vi-VN') }} ₫</span>
 			</div>
 			

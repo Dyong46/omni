@@ -22,6 +22,10 @@ const subtotal = computed(() => {
 	return selectedProducts.value.reduce((sum, item) => sum + item.price * item.quantity, 0);
 });
 
+const itemCount = computed(() => {
+	return selectedProducts.value.reduce((sum, item) => sum + item.quantity, 0);
+});
+
 const total = computed(() => {
 	return subtotal.value + shippingFee.value;
 });
@@ -58,8 +62,10 @@ async function submit() {
 		await $fetch("/api/orders", { method: "POST", body: orderData });
 		toast.add({ title: "Success", description: "Order created successfully" });
 		router.push("/orders");
-	} catch (err: any) {
-		toast.add({ title: "Error", description: err?.message || "Failed to create order", color: "error" });
+	} catch (err: unknown) {
+		const message = err instanceof Error ? err.message : "Failed to create order";
+
+		toast.add({ title: "Error", description: message, color: "error" });
 	} finally {
 		submitting.value = false;
 	}
@@ -95,6 +101,7 @@ async function submit() {
 						:subtotal="subtotal"
 						:shipping-fee="shippingFee"
 						:total="total"
+						:item-count="itemCount"
 						@update:shipping-fee="shippingFee = $event"
 					/>
 				</div>

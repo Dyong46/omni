@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import type { Product } from "~/types/product";
+import type { Product as SelectedProduct } from "~/types/product";
 import { useDebounceFn } from "@vueuse/core";
-import productService from "~/services/product.service";
+import productService, { type Product as SearchProduct } from "~/services/product.service";
 import type { TableColumn } from "@nuxt/ui";
 import { formatCurrency } from "~/utils/formatters";
 
-const config = useRuntimeConfig();
-
 const props = defineProps<{
-	selectedProducts: Array<Product & { quantity: number; selectedVariant?: string }>;
+	selectedProducts: Array<SelectedProduct & { selectedVariant?: string }>;
 }>();
+
+const rowSelection = ref<Record<string, boolean>>({});
+
+const selectedIds = computed<number[]>(() => {
+	return Object.entries(rowSelection.value)
+		.filter(([, isSelected]) => isSelected)
+		.map(([rowId]) => Number(rowId))
+		.filter(rowId => Number.isFinite(rowId));
+});
 
 const emit = defineEmits<{
 	"update:selectedProducts": [value: typeof props.selectedProducts];
@@ -18,15 +25,14 @@ const emit = defineEmits<{
 const toast = useToast();
 const productSearchQuery = ref("");
 const showProductModal = ref(false);
-const searchedProducts = ref<Product[]>([]);
-const selectedProductIds = ref<number[]>([]);
+const searchedProducts = ref<SearchProduct[]>([]);
 
 const status = ref<"idle" | "pending" | "success" | "error">("idle");
 
 const UCheckbox = resolveComponent("UCheckbox");
 const UButton = resolveComponent("UButton");
 
-const columns: TableColumn<Product>[] = [
+const columns: TableColumn<SearchProduct>[] = [
 	{
 		id: "select",
 		header: ({ table }) =>
@@ -97,47 +103,54 @@ const columns: TableColumn<Product>[] = [
 ];
 
 async function searchProducts() {
-	if (!productSearchQuery.value.trim()) {
-		searchedProducts.value = [];
-		return;
-	}
+	rowSelection.value = {};
 
 	try {
-		const response = await productService.search(productSearchQuery.value);
+		status.value = "pending";
+		const query = productSearchQuery.value.trim();
+		const response = query
+			? await productService.search(query)
+			: await productService.getAll();
 
 		searchedProducts.value = response;
+		status.value = "success";
 	} catch (error) {
+		status.value = "error";
 		console.error("Error searching products:", error);
 		toast.add({ title: "Error", description: "Failed to search products", color: "error" });
 	}
 }
 
-function openProductModal() {
+async function openProductModal() {
 	showProductModal.value = true;
-	// searchProducts();
-}
 
-function toggleProductSelection(product: Product) {
-	const index = selectedProductIds.value.indexOf(product.id);
-
-	if (index > -1) {
-		selectedProductIds.value.splice(index, 1);
-	} else {
-		selectedProductIds.value.push(product.id);
+	if (!productSearchQuery.value.trim() && searchedProducts.value.length === 0) {
+		await searchProducts();
 	}
 }
 
 function confirmProductSelection() {
 	const newProducts = searchedProducts.value
-		.filter(p => selectedProductIds.value.includes(p.id))
+		.filter(product => selectedIds.value.includes(product.id))
 		.filter(p => !props.selectedProducts.some(sp => sp.id === p.id))
-		.map(p => ({ ...p, quantity: 1 }));
+		.map(product => ({
+			id: product.id,
+			name: product.name,
+			price: product.price,
+			quantity: 1,
+			image: product.image,
+			categoryId: product.categoryId,
+			createdAt: product.createdAt,
+			updatedAt: product.updatedAt,
+			category: product.category
+		}));
 	
 	emit("update:selectedProducts", [...props.selectedProducts, ...newProducts]);
 	showProductModal.value = false;
-	selectedProductIds.value = [];
+	rowSelection.value = {};
 	productSearchQuery.value = "";
 	searchedProducts.value = [];
+	status.value = "idle";
 }
 
 function updateQuantity(productId: number, change: number) {
@@ -156,9 +169,17 @@ function removeProduct(productId: number) {
 	emit("update:selectedProducts", products);
 }
 
-const openWithDelay = useDebounceFn(() => {
-	openProductModal();
+const debouncedSearchProducts = useDebounceFn(() => {
+	searchProducts();
 }, 300);
+
+watch(productSearchQuery, () => {
+	if (!showProductModal.value) {
+		return;
+	}
+
+	debouncedSearchProducts();
+});
 
 </script>
 
@@ -171,14 +192,6 @@ const openWithDelay = useDebounceFn(() => {
 		<div class="space-y-4">
 			<!-- Search Input -->
 			<div class="flex gap-2">
-				<UInput
-					v-model="productSearchQuery"
-					placeholder="Search products"
-					icon="i-lucide-search"
-					size="lg"
-					class="cursor-pointer flex-1"
-					@click="openWithDelay"
-				/>
 				<UButton
 					label="Search"
 					variant="outline"
@@ -188,11 +201,10 @@ const openWithDelay = useDebounceFn(() => {
 			
 			<!-- Selected Products Display -->
 			<div v-if="selectedProducts.length > 0" class="space-y-3">
-				<div class="text-sm font-medium text-gray-700">Selected Products ({{ selectedProducts.length }})</div>
 				<div
 					v-for="product in selectedProducts"
 					:key="product.id"
-					class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+					class="flex items-center gap-3 py-3"
 				>
 					<!-- Product Image -->
 					<img
@@ -203,8 +215,8 @@ const openWithDelay = useDebounceFn(() => {
 					
 					<!-- Product Info -->
 					<div class="flex-1 min-w-0">
-						<div class="font-medium text-gray-900 truncate">{{ product.name }}</div>
-						<div class="text-sm text-gray-600">{{ product.price.toLocaleString('vi-VN') }} ₫</div>
+						<div class="font-medium text-gray-500 truncate">{{ product.name }}</div>
+						<div class="text-sm text-gray-50">{{ product.price.toLocaleString('vi-VN') }} ₫</div>
 					</div>
 					
 					<!-- Quantity Controls -->
@@ -257,16 +269,15 @@ const openWithDelay = useDebounceFn(() => {
 					placeholder="Search products"
 					icon="i-lucide-search"
 					size="lg"
-					@input="searchProducts"
 				/>
 				
 				<div class="max-h-96 overflow-y-auto">
 					<UTable
-						ref="table"
+						v-model:row-selection="rowSelection"
 						class="shrink-0"
-
 						:columns="columns"
 						:data="searchedProducts"
+						:get-row-id="(row) => String(row.id)"
 						:ui="{
 							base: 'table-fixed border-separate border-spacing-0',
 							thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
@@ -276,37 +287,7 @@ const openWithDelay = useDebounceFn(() => {
 							separator: 'h-0'
 						}"
 						:loading="status === 'pending'"
-					>
-						<template #select-data="{ row }">
-							<UCheckbox
-								:model-value="selectedProductIds.includes(row.id)"
-								@change="toggleProductSelection(row)"
-							/>
-						</template>
-						
-						<template #product-data="{ row }">
-							<div class="flex items-center gap-3">
-								<img
-									:src="row.image || 'https://via.placeholder.com/40'"
-									:alt="row.name"
-									class="w-10 h-10 object-cover rounded"
-								>
-								<span class="font-medium">{{ row.name }}</span>
-							</div>
-						</template>
-						
-						<template #sku-data="{ row }">
-							<span class="text-sm text-gray-600">{{ row.id }}</span>
-						</template>
-						
-						<template #price-data="{ row }">
-							<span>{{ row.price.toLocaleString('vi-VN') }} ₫</span>
-						</template>
-						
-						<template #stock-data="{ row }">
-							<span>{{ row.quantity || 0 }}</span>
-						</template>
-					</UTable>
+					/>
 				</div>
 			</div>
 		</template>
@@ -321,7 +302,7 @@ const openWithDelay = useDebounceFn(() => {
 				<UButton
 					label="Confirm Selection"
 					color="primary"
-					:disabled="selectedProductIds.length === 0"
+					:disabled="selectedIds.length === 0"
 					@click="confirmProductSelection"
 				/>
 			</div>
