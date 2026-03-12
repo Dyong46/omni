@@ -112,7 +112,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 		await productService.update(props.product.id, {
 			name: event.data.name,
 			price: event.data.price,
-			stock: event.data.quantity,
+			quantity: event.data.quantity,
 			image: event.data.image,
 			categoryId: event.data.categoryId
 		});

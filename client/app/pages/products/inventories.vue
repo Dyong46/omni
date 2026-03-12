@@ -2,7 +2,7 @@
 import type { TableColumn } from "@nuxt/ui";
 import { getPaginationRowModel } from "@tanstack/table-core";
 import type { Row } from "@tanstack/table-core";
-import productService, { type Product } from "~/services/product.service";
+import productService, { type Product, type ProductSearchParams } from "~/services/product.service";
 import { formatCurrency } from "~/utils/formatters";
 
 const UButton = resolveComponent("UButton");
@@ -28,7 +28,7 @@ const status = ref<"idle" | "pending" | "success" | "error">("idle");
 const loadInventories = async () => {
 	status.value = "pending";
 	try {
-		const params: any = {};
+		const params: ProductSearchParams = {};
 
 		if (searchQuery.value) params.q = searchQuery.value;
 		data.value = await productService.getAll(params);
@@ -49,12 +49,14 @@ watch(searchQuery, () => {
 
 async function updateQuantity(id: number, quantity: number) {
 	try {
-		await productService.update(id, { stock: quantity });
+		await productService.update(id, { quantity });
 		toast.add({ title: "Inventory updated", description: "Quantity updated successfully", color: "success" });
 		refresh();
 		editingId.value = null;
-	} catch (err: any) {
-		toast.add({ title: "Error", description: err?.message || "Failed to update inventory", color: "error" });
+	} catch (err: unknown) {
+		const message = err instanceof Error ? err.message : "Failed to update inventory";
+
+		toast.add({ title: "Error", description: message, color: "error" });
 	}
 }
 

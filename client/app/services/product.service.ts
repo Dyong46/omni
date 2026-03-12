@@ -3,10 +3,8 @@ import axios from "~/utils/axios";
 export interface Product {
   id: number;
   name: string;
-  description?: string;
   price: number;
-  sku: string;
-  stock: number;
+  quantity: number;
   categoryId?: number;
   image?: string;
   createdAt: string;
@@ -19,20 +17,16 @@ export interface Product {
 
 export interface CreateProductDto {
   name: string;
-  description?: string;
   price: number;
-  sku: string;
-  stock: number;
+  quantity?: number;
   categoryId?: number;
   image?: string;
 }
 
 export interface UpdateProductDto {
   name?: string;
-  description?: string;
   price?: number;
-  sku?: string;
-  stock?: number;
+  quantity?: number;
   categoryId?: number;
   image?: string;
 }

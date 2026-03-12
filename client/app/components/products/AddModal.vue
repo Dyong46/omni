@@ -84,10 +84,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 		await productService.create({
 			name: event.data.name!,
 			price: event.data.price!,
-			sku: `SKU-${Date.now()}`,
-			stock: event.data.quantity!,
+			quantity: event.data.quantity!,
 			categoryId: event.data.categoryId,
-			imageUrl: event.data.image
+			image: event.data.image
 		});
 
 		toast.add({
