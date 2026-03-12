@@ -86,25 +86,25 @@ const links = [
 			}
 		}]
 	},
-	//{
-	// 	label: "Ship",
-	// 	icon: "i-lucide-truck",
-	// 	type: "trigger",
-	// 	children: [{
-	// 		label: "Overview",
-	// 		to: "/shipments/dashboard",
-	// 		exact: true,
-	// 		onSelect: () => {
-	// 			open.value = false;
-	// 		}
-	// 	}, {
-	// 		label: "Ship",
-	// 		to: "/shipments",
-	// 		onSelect: () => {
-	// 			open.value = false;
-	// 		}
-	// 	}]
-	// },
+	{
+		label: "Ship",
+		icon: "i-lucide-truck",
+		type: "trigger",
+		children: [{
+			label: "Overview",
+			to: "/shipments/dashboard",
+			exact: true,
+			onSelect: () => {
+				open.value = false;
+			}
+		}, {
+			label: "Ship",
+			to: "/shipments",
+			onSelect: () => {
+				open.value = false;
+			}
+		}]
+	},
 	{
 		label: "Product",
 		icon: "i-lucide-tag",

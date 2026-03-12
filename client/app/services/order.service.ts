@@ -2,6 +2,13 @@ import axios from "~/utils/axios";
 
 export type OrderChannel = "offline" | "shopee" | "tiktok";
 export type OrderPaymentStatus = "unpaid" | "paid" | "refunded";
+export type OrderShipmentStatus =
+  | "new"
+  | "confirmed"
+  | "packing"
+  | "shipping"
+  | "delivered"
+  | "cancelled";
 
 export interface Order {
   avatar?: string;
@@ -12,7 +19,7 @@ export interface Order {
   phone: string;
   email?: string;
   shippingAddress: string;
-  status: string;
+  status: OrderShipmentStatus;
   paymentStatus: OrderPaymentStatus;
   totalAmount: number;
   items?: OrderItem[];
@@ -52,7 +59,7 @@ export interface UpdateOrderDto {
   phone?: string;
   email?: string;
   shippingAddress?: string;
-  status?: string;
+  status?: OrderShipmentStatus;
   paymentStatus?: OrderPaymentStatus;
 }
 
@@ -149,7 +156,7 @@ class OrderService {
 	/**
    * Create a new order
    */
-  async create(data: CreateOrderDto): Promise<CreateOrderResponse> {
+	async create(data: CreateOrderDto): Promise<CreateOrderResponse> {
 		return axios.post(this.endpoint, data);
 	}
 
@@ -158,6 +165,13 @@ class OrderService {
    */
 	async update(id: number, data: UpdateOrderDto): Promise<Order> {
 		return axios.put(`${this.endpoint}/${id}`, data);
+	}
+
+	/**
+   * Update shipment status quickly from shipments page
+   */
+	async updateShipmentStatus(id: number, status: OrderShipmentStatus): Promise<Order> {
+		return this.update(id, { status });
 	}
 
 	/**
