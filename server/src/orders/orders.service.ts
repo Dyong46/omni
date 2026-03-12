@@ -75,9 +75,11 @@ export class OrdersService {
 
 			items.push(orderItem);
 
-			// Update product quantity
-			product.quantity -= itemDto.quantity;
-			await this.productsRepository.save(product);
+			// Only deduct inventory for confirmed orders, not drafts
+			if (createOrderDto.status !== 'draft') {
+				product.quantity -= itemDto.quantity;
+				await this.productsRepository.save(product);
+			}
 		}
 
 		// Create order
@@ -201,6 +203,24 @@ export class OrdersService {
 
 			order.items = newItems;
 			order.totalAmount = totalAmount;
+		}
+
+		// If transitioning from draft to an active status, deduct inventory
+		if (order.status === 'draft' && updateOrderDto.status && updateOrderDto.status !== 'draft' && !updateOrderDto.items) {
+			for (const item of order.items) {
+				const product = await this.productsRepository.findOne({
+					where: { id: item.productId },
+				});
+				if (product) {
+					if (product.quantity < item.quantity) {
+						throw new BadRequestException(
+							`Insufficient stock for product ${product.name}. Available: ${product.quantity}`,
+						);
+					}
+					product.quantity -= item.quantity;
+					await this.productsRepository.save(product);
+				}
+			}
 		}
 
 		// Update other fields

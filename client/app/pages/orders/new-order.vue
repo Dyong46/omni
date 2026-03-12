@@ -19,6 +19,7 @@ const orderInfo = ref({
 	notes: ""
 });
 const submitting = ref(false);
+const savingDraft = ref(false);
 const showCheckoutQrModal = ref(false);
 const checkoutUrl = ref("");
 const checkoutSessionId = ref("");
@@ -149,6 +150,40 @@ async function submit() {
 		submitting.value = false;
 	}
 }
+
+async function saveDraft() {
+	if (selectedProducts.value.length === 0) {
+		toast.add({ title: "Error", description: "Add at least one product", color: "error" });
+		return;
+	}
+
+	savingDraft.value = true;
+	try {
+		const draftData: CreateOrderDto = {
+			channel: orderInfo.value.channel as CreateOrderDto["channel"],
+			customerName: selectedCustomer.value?.name ?? "",
+			phone: selectedCustomer.value?.phone ?? "",
+			email: selectedCustomer.value?.email ?? "",
+			shippingAddress: shippingAddress.value.trim(),
+			items: selectedProducts.value.map(p => ({
+				productId: p.id,
+				quantity: p.quantity,
+				price: p.price
+			})),
+			status: "draft"
+		};
+
+		await orderService.saveDraft(draftData);
+		toast.add({ title: "Saved", description: "Order saved as draft", color: "success" });
+		router.push("/draft-orders");
+	} catch (err: unknown) {
+		const message = err instanceof Error ? err.message : "Failed to save draft";
+
+		toast.add({ title: "Error", description: message, color: "error" });
+	} finally {
+		savingDraft.value = false;
+	}
+}
 </script>
 
 <template>
@@ -216,13 +251,21 @@ async function submit() {
 					</UCard>
 					
 					<!-- Action Buttons -->
-					<div class="flex gap-3">
+					<div class="flex flex-col gap-2">
 						<UButton
 							label="Create Order"
 							color="primary"
 							block
 							:loading="submitting"
 							@click="submit"
+						/>
+						<UButton
+							label="Save as Draft"
+							color="neutral"
+							variant="outline"
+							block
+							:loading="savingDraft"
+							@click="saveDraft"
 						/>
 					</div>
 				</div>

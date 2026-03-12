@@ -3,6 +3,7 @@ import axios from "~/utils/axios";
 export type OrderChannel = "offline" | "shopee" | "tiktok";
 export type OrderPaymentStatus = "unpaid" | "paid" | "refunded";
 export type OrderShipmentStatus =
+  | "draft"
   | "new"
   | "confirmed"
   | "packing"
@@ -172,6 +173,27 @@ class OrderService {
    */
 	async updateShipmentStatus(id: number, status: OrderShipmentStatus): Promise<Order> {
 		return this.update(id, { status });
+	}
+
+	/**
+   * Get all draft orders (status = draft)
+   */
+	async getDrafts(): Promise<Order[]> {
+		return this.getAll({ status: "draft" });
+	}
+
+	/**
+   * Save current order form as a draft (status = draft)
+   */
+	async saveDraft(data: Omit<CreateOrderDto, "status">): Promise<CreateOrderResponse> {
+		return this.create({ ...data, status: "draft" });
+	}
+
+	/**
+   * Convert a draft to a real order (set status = new)
+   */
+	async confirmDraft(id: number): Promise<Order> {
+		return this.update(id, { status: "new" });
 	}
 
 	/**
