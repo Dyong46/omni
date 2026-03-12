@@ -22,6 +22,7 @@ import {
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Products')
@@ -223,26 +224,48 @@ export class ProductsController {
 		return this.productsService.findAll();
 	}
 
+	@Get(':id/inventory-movements')
+	@ApiOperation({
+		summary: 'Get product inventory movements',
+		description: 'Get recent inventory adjustment logs for a product',
+	})
+	@ApiParam({ name: 'id', description: 'Product ID', example: 1 })
+	@ApiResponse({
+		status: 200,
+		description: 'Successfully retrieved inventory movements',
+	})
+	@ApiResponse({ status: 404, description: 'Product not found' })
+	findInventoryMovements(@Param('id', ParseIntPipe) id: number) {
+		return this.productsService.findInventoryMovements(id);
+	}
+
 	/**
 	 * Update inventory quantity for a product
 	 */
 	@Put(':id/inventory')
 	@ApiOperation({
 		summary: 'Update product inventory',
-		description: 'Set the current inventory quantity for a product',
+		description: 'Set the current inventory quantity for a product and create a movement log',
 	})
 	@ApiParam({ name: 'id', description: 'Product ID', example: 1 })
 	@ApiBody({
-		description: 'Quantity payload',
-		schema: { example: { quantity: 5 } },
+		type: UpdateInventoryDto,
+		description: 'Inventory update payload',
+		schema: {
+			example: {
+				quantity: 5,
+				reason: 'manual_adjustment',
+				note: 'Cycle count correction',
+			},
+		},
 	})
 	@ApiResponse({ status: 200, description: 'Inventory updated successfully' })
 	@ApiResponse({ status: 404, description: 'Product not found' })
 	updateInventory(
 		@Param('id', ParseIntPipe) id: number,
-		@Body('quantity', new ParseIntPipe()) quantity: number,
+		@Body() updateInventoryDto: UpdateInventoryDto,
 	) {
-		return this.productsService.updateQuantity(id, quantity);
+		return this.productsService.updateInventory(id, updateInventoryDto);
 	}
 
 	/**

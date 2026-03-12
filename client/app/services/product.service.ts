@@ -31,6 +31,23 @@ export interface UpdateProductDto {
   image?: string;
 }
 
+export interface UpdateInventoryDto {
+   quantity: number;
+   reason?: string;
+   note?: string;
+}
+
+export interface InventoryMovement {
+   id: number;
+   productId: number;
+   previousQuantity: number;
+   newQuantity: number;
+   changeQuantity: number;
+   reason: string;
+   note?: string | null;
+   createdAt: string;
+}
+
 export interface ProductSearchParams {
   q?: string;
   categoryId?: number;
@@ -42,8 +59,20 @@ class ProductService {
 	private readonly endpoint = "/products";
 
 	/**
-   * Get all products
-   */
+   /* Get all products
+   /* Update product inventory and create a movement log
+    */
+	async updateInventory(id: number, data: UpdateInventoryDto): Promise<Product> {
+		return axios.put(`${this.endpoint}/${id}/inventory`, data);
+	}
+
+	/**
+    * Get recent inventory movements for a product
+    */
+	async getInventoryMovements(id: number): Promise<InventoryMovement[]> {
+		return axios.get(`${this.endpoint}/${id}/inventory-movements`);
+	}
+
 	async getAll(params?: ProductSearchParams): Promise<Product[]> {
 		return axios.get(this.endpoint, { params });
 	}

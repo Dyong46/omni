@@ -1,15 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
+import { InventoryMovement } from './entities/inventory-movement.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateInventoryDto } from './dto/update-inventory.dto';
 
 @Injectable()
 export class ProductsService {
 	constructor(
 		@InjectRepository(Product)
 		private readonly productRepository: Repository<Product>,
+		@InjectRepository(InventoryMovement)
+		private readonly inventoryMovementRepository: Repository<InventoryMovement>,
+		private readonly dataSource: DataSource,
 	) {}
 
 	/**
@@ -100,9 +105,52 @@ export class ProductsService {
 	 * Update product quantity (for inventory management)
 	 */
 	async updateQuantity(id: number, quantity: number) {
-		const product = await this.findOne(id);
-		product.quantity = quantity;
-		return this.productRepository.save(product);
+		return this.updateInventory(id, { quantity });
+	}
+
+	async updateInventory(id: number, updateInventoryDto: UpdateInventoryDto) {
+		return this.dataSource.transaction(async (manager) => {
+			const product = await manager.findOne(Product, {
+				where: { id },
+				relations: ['category'],
+				lock: { mode: 'pessimistic_write' },
+			});
+
+			if (!product) {
+				throw new NotFoundException('Product not found');
+			}
+
+			const previousQuantity = product.quantity;
+			const newQuantity = updateInventoryDto.quantity;
+
+			product.quantity = newQuantity;
+			const updatedProduct = await manager.save(product);
+
+			if (previousQuantity !== newQuantity) {
+				const movement = manager.create(InventoryMovement, {
+					productId: id,
+					previousQuantity,
+					newQuantity,
+					changeQuantity: newQuantity - previousQuantity,
+					reason: updateInventoryDto.reason ?? 'manual_adjustment',
+					note: updateInventoryDto.note ?? null,
+				});
+
+				await manager.save(movement);
+			}
+
+			return updatedProduct;
+		});
+	}
+
+	async findInventoryMovements(productId: number) {
+		await this.findOne(productId);
+
+		return this.inventoryMovementRepository.find({
+			where: { productId },
+			order: { createdAt: 'DESC' },
+			take: 50,
+		});
 	}
 
 	/**

@@ -4,7 +4,7 @@ import {
 	BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import {
 	Order,
 	OrderChannel,
@@ -40,67 +40,136 @@ export class OrdersService {
 		private readonly orderItemsRepository: Repository<OrderItem>,
 		@InjectRepository(Product)
 		private readonly productsRepository: Repository<Product>,
+		private readonly dataSource: DataSource,
 	) {}
 
-	async create(createOrderDto: CreateOrderDto): Promise<Order> {
-		// Validate products and calculate total
-		let totalAmount = 0;
-		const items: OrderItem[] = [];
+	private doesStatusReserveInventory(status?: string): boolean {
+		return status !== 'draft' && status !== 'cancelled';
+	}
 
-		for (const itemDto of createOrderDto.items) {
-			const product = await this.productsRepository.findOne({
-				where: { id: itemDto.productId },
-			});
+	private async findOrderInTransaction(
+		manager: EntityManager,
+		id: number,
+	): Promise<Order> {
+		const order = await manager.findOne(Order, {
+			where: { id },
+			relations: ['items', 'items.product'],
+		});
 
-			if (!product) {
-				throw new BadRequestException(
-					`Product with ID ${itemDto.productId} not found`,
-				);
-			}
+		if (!order) {
+			throw new NotFoundException(`Order with ID ${id} not found`);
+		}
 
-			if (product.quantity < itemDto.quantity) {
+		return order;
+	}
+
+	private async findProductForUpdate(
+		manager: EntityManager,
+		productId: number,
+	): Promise<Product> {
+		const product = await manager.findOne(Product, {
+			where: { id: productId },
+			lock: { mode: 'pessimistic_write' },
+		});
+
+		if (!product) {
+			throw new BadRequestException(
+				`Product with ID ${productId} not found`,
+			);
+		}
+
+		return product;
+	}
+
+	private async deductInventory(
+		manager: EntityManager,
+		items: Array<{ productId: number; quantity: number }>,
+	) {
+		for (const item of items) {
+			const product = await this.findProductForUpdate(manager, item.productId);
+
+			if (product.quantity < item.quantity) {
 				throw new BadRequestException(
 					`Insufficient stock for product ${product.name}. Available: ${product.quantity}`,
 				);
 			}
 
-			totalAmount += itemDto.price * itemDto.quantity;
+			product.quantity -= item.quantity;
+			await manager.save(product);
+		}
+	}
 
-			// Create order item
-			const orderItem = this.orderItemsRepository.create({
-				productId: itemDto.productId,
-				quantity: itemDto.quantity,
-				price: itemDto.price,
+	private async restoreInventory(
+		manager: EntityManager,
+		items: Array<{ productId: number; quantity: number }>,
+	) {
+		for (const item of items) {
+			const product = await manager.findOne(Product, {
+				where: { id: item.productId },
+				lock: { mode: 'pessimistic_write' },
 			});
 
-			items.push(orderItem);
-
-			// Only deduct inventory for confirmed orders, not drafts
-			if (createOrderDto.status !== 'draft') {
-				product.quantity -= itemDto.quantity;
-				await this.productsRepository.save(product);
+			if (!product) {
+				continue;
 			}
+
+			product.quantity += item.quantity;
+			await manager.save(product);
 		}
+	}
 
-		// Create order
-		const defaultPaymentStatus =
-			createOrderDto.channel === OrderChannel.TIKTOK
-				? OrderPaymentStatus.PAID
-				: OrderPaymentStatus.UNPAID;
+	private buildOrderItems(
+		manager: EntityManager,
+		items: CreateOrderDto['items'],
+		orderId?: number,
+	): OrderItem[] {
+		return items.map((item) =>
+			manager.create(OrderItem, {
+				productId: item.productId,
+				quantity: item.quantity,
+				price: item.price,
+				...(orderId ? { orderId } : {}),
+			}),
+		);
+	}
 
-		const order = this.ordersRepository.create({
-			channel: createOrderDto.channel,
-			customerName: createOrderDto.customerName ?? null,
-			phone: createOrderDto.phone,
-			email: createOrderDto.email ?? null,
-			shippingAddress: createOrderDto.shippingAddress ?? null,
-			status: createOrderDto.status ?? 'new',
-			paymentStatus: createOrderDto.paymentStatus ?? defaultPaymentStatus,
-			totalAmount,
-			items,
+	async create(createOrderDto: CreateOrderDto): Promise<Order> {
+		return this.dataSource.transaction(async (manager) => {
+			const totalAmount = createOrderDto.items.reduce(
+				(sum, item) => sum + item.price * item.quantity,
+				0,
+			);
+			const status = createOrderDto.status ?? 'new';
+			const items = this.buildOrderItems(manager, createOrderDto.items);
+
+			for (const item of createOrderDto.items) {
+				await this.findProductForUpdate(manager, item.productId);
+			}
+
+			if (this.doesStatusReserveInventory(status)) {
+				await this.deductInventory(manager, createOrderDto.items);
+			}
+
+			const defaultPaymentStatus =
+				createOrderDto.channel === OrderChannel.TIKTOK
+					? OrderPaymentStatus.PAID
+					: OrderPaymentStatus.UNPAID;
+
+			const order = manager.create(Order, {
+				channel: createOrderDto.channel,
+				customerName: createOrderDto.customerName ?? null,
+				phone: createOrderDto.phone,
+				email: createOrderDto.email ?? null,
+				shippingAddress: createOrderDto.shippingAddress ?? null,
+				status,
+				paymentStatus:
+					createOrderDto.paymentStatus ?? defaultPaymentStatus,
+				totalAmount,
+				items,
+			});
+
+			return manager.save(order);
 		});
-
-		return this.ordersRepository.save(order);
 	}
 
 	async findAll(
@@ -148,136 +217,75 @@ export class OrdersService {
 	}
 
 	async update(id: number, updateOrderDto: UpdateOrderDto): Promise<Order> {
-		const order = await this.findOne(id);
+		return this.dataSource.transaction(async (manager) => {
+			const order = await this.findOrderInTransaction(manager, id);
+			const currentReservesInventory = this.doesStatusReserveInventory(
+				order.status,
+			);
+			const nextStatus = updateOrderDto.status ?? order.status;
+			const nextReservesInventory = this.doesStatusReserveInventory(nextStatus);
 
-		// If items are being updated, handle them
-		if (updateOrderDto.items) {
-			// Remove old items and restore product quantities
-			for (const item of order.items) {
-				const product = await this.productsRepository.findOne({
-					where: { id: item.productId },
-				});
-				if (product) {
-					product.quantity += item.quantity;
-					await this.productsRepository.save(product);
+			if (updateOrderDto.items) {
+				if (currentReservesInventory) {
+					await this.restoreInventory(manager, order.items);
+				}
+
+				await manager.remove(order.items);
+
+				const newItems = this.buildOrderItems(
+					manager,
+					updateOrderDto.items,
+					order.id,
+				);
+				const totalAmount = updateOrderDto.items.reduce(
+					(sum, item) => sum + item.price * item.quantity,
+					0,
+				);
+
+				for (const item of updateOrderDto.items) {
+					await this.findProductForUpdate(manager, item.productId);
+				}
+
+				if (nextReservesInventory) {
+					await this.deductInventory(manager, updateOrderDto.items);
+				}
+
+				order.items = newItems;
+				order.totalAmount = totalAmount;
+			} else if (currentReservesInventory !== nextReservesInventory) {
+				if (nextReservesInventory) {
+					await this.deductInventory(manager, order.items);
+				} else {
+					await this.restoreInventory(manager, order.items);
 				}
 			}
 
-			// Remove old items
-			await this.orderItemsRepository.remove(order.items);
+			order.channel = updateOrderDto.channel ?? order.channel;
+			order.customerName = updateOrderDto.customerName ?? order.customerName;
+			order.phone = updateOrderDto.phone ?? order.phone;
+			order.email = updateOrderDto.email ?? order.email;
+			order.shippingAddress =
+				updateOrderDto.shippingAddress ?? order.shippingAddress;
+			order.status = nextStatus;
 
-			// Add new items and update quantities
-			let totalAmount = 0;
-			const newItems: OrderItem[] = [];
-
-			for (const itemDto of updateOrderDto.items) {
-				const product = await this.productsRepository.findOne({
-					where: { id: itemDto.productId },
-				});
-
-				if (!product) {
-					throw new BadRequestException(
-						`Product with ID ${itemDto.productId} not found`,
-					);
-				}
-
-				if (product.quantity < itemDto.quantity) {
-					throw new BadRequestException(
-						`Insufficient stock for product ${product.name}. Available: ${product.quantity}`,
-					);
-				}
-
-				totalAmount += itemDto.price * itemDto.quantity;
-
-				const orderItem = this.orderItemsRepository.create({
-					...itemDto,
-					orderId: order.id,
-				});
-
-				newItems.push(orderItem);
-
-				// Update product quantity
-				product.quantity -= itemDto.quantity;
-				await this.productsRepository.save(product);
+			if (updateOrderDto.paymentStatus) {
+				order.paymentStatus = updateOrderDto.paymentStatus;
 			}
 
-			order.items = newItems;
-			order.totalAmount = totalAmount;
-		}
-
-		// If cancelling a non-draft order, restore inventory
-		const isCancelling =
-			updateOrderDto.status === 'cancelled' &&
-			order.status !== 'cancelled' &&
-			order.status !== 'draft';
-
-		if (isCancelling && !updateOrderDto.items) {
-			for (const item of order.items) {
-				const product = await this.productsRepository.findOne({
-					where: { id: item.productId },
-				});
-				if (product) {
-					product.quantity += item.quantity;
-					await this.productsRepository.save(product);
-				}
-			}
-		}
-
-		// If transitioning from draft to an active status, deduct inventory
-		if (
-			order.status === 'draft' &&
-			updateOrderDto.status &&
-			updateOrderDto.status !== 'draft' &&
-			updateOrderDto.status !== 'cancelled' &&
-			!updateOrderDto.items
-		) {
-			for (const item of order.items) {
-				const product = await this.productsRepository.findOne({
-					where: { id: item.productId },
-				});
-				if (product) {
-					if (product.quantity < item.quantity) {
-						throw new BadRequestException(
-							`Insufficient stock for product ${product.name}. Available: ${product.quantity}`,
-						);
-					}
-					product.quantity -= item.quantity;
-					await this.productsRepository.save(product);
-				}
-			}
-		}
-
-		// Update other fields
-		order.channel = updateOrderDto.channel ?? order.channel;
-		order.customerName = updateOrderDto.customerName ?? order.customerName;
-		order.phone = updateOrderDto.phone ?? order.phone;
-		order.email = updateOrderDto.email ?? order.email;
-		order.shippingAddress =
-			updateOrderDto.shippingAddress ?? order.shippingAddress;
-		order.status = updateOrderDto.status ?? order.status;
-
-		if (updateOrderDto.paymentStatus) {
-			order.paymentStatus = updateOrderDto.paymentStatus;
-		}
-
-		return this.ordersRepository.save(order);
+			return manager.save(order);
+		});
 	}
 
 	async remove(id: number): Promise<void> {
-		const order = await this.findOne(id);
+		await this.dataSource.transaction(async (manager) => {
+			const order = await this.findOrderInTransaction(manager, id);
 
-		// Restore product quantities
-		for (const item of order.items) {
-			const product = await this.productsRepository.findOne({
-				where: { id: item.productId },
-			});
-			if (product) {
-				product.quantity += item.quantity;
-				await this.productsRepository.save(product);
+			if (this.doesStatusReserveInventory(order.status)) {
+				await this.restoreInventory(manager, order.items);
 			}
-		}
 
-		await this.ordersRepository.remove(order);
+			await manager.remove(order);
+		});
 	}
 
 	async getStatistics(): Promise<any> {

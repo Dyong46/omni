@@ -33,6 +33,20 @@ CREATE TABLE products (
           ON DELETE SET NULL
 );
 
+CREATE TABLE inventory_movements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    previous_quantity INT NOT NULL,
+    new_quantity INT NOT NULL,
+    change_quantity INT NOT NULL,
+    reason VARCHAR(100) NOT NULL,
+    note TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_inventory_movement_product
+        FOREIGN KEY (product_id) REFERENCES products(id)
+            ON DELETE CASCADE
+);
+
 CREATE TABLE customers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150),

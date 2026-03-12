@@ -8,7 +8,7 @@ const toast = useToast();
 const router = useRouter();
 
 // State
-const selectedProducts = ref<Array<Product & { quantity: number; selectedVariant?: string }>>([]);
+const selectedProducts = ref<Array<Product & { quantity: number; selectedVariant?: string; availableQuantity?: number }>>([]);
 const selectedCustomer = ref<Customer | null>(null);
 const shippingAddress = ref("");
 const shippingFee = ref(0);

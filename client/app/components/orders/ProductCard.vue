@@ -5,8 +5,13 @@ import productService, { type Product as SearchProduct } from "~/services/produc
 import type { TableColumn } from "@nuxt/ui";
 import { formatCurrency } from "~/utils/formatters";
 
+type OrderSelectedProduct = SelectedProduct & {
+	selectedVariant?: string;
+	availableQuantity?: number;
+};
+
 const props = defineProps<{
-	selectedProducts: Array<SelectedProduct & { selectedVariant?: string }>;
+	selectedProducts: OrderSelectedProduct[];
 }>();
 
 const rowSelection = ref<Record<string, boolean>>({});
@@ -99,6 +104,11 @@ const columns: TableColumn<SearchProduct>[] = [
 			});
 		},
 		cell: ({ row }) => formatCurrency(row.original.price)
+	},
+	{
+		accessorKey: "quantity",
+		header: "In Stock",
+		cell: ({ row }) => row.original.quantity
 	}
 ];
 
@@ -130,20 +140,33 @@ async function openProductModal() {
 }
 
 function confirmProductSelection() {
+	const outOfStockProducts = searchedProducts.value.filter(
+		(product) => selectedIds.value.includes(product.id) && product.quantity <= 0,
+	);
 	const newProducts = searchedProducts.value
 		.filter(product => selectedIds.value.includes(product.id))
+		.filter(product => product.quantity > 0)
 		.filter(p => !props.selectedProducts.some(sp => sp.id === p.id))
 		.map(product => ({
 			id: product.id,
 			name: product.name,
 			price: product.price,
 			quantity: 1,
+			availableQuantity: product.quantity,
 			image: product.image,
 			categoryId: product.categoryId,
 			createdAt: product.createdAt,
 			updatedAt: product.updatedAt,
 			category: product.category
 		}));
+
+	if (outOfStockProducts.length > 0) {
+		toast.add({
+			title: "Out of stock",
+			description: `${outOfStockProducts.length} selected product(s) were skipped because they have no stock.`,
+			color: "warning"
+		});
+	}
 	
 	emit("update:selectedProducts", [...props.selectedProducts, ...newProducts]);
 	showProductModal.value = false;
@@ -158,7 +181,19 @@ function updateQuantity(productId: number, change: number) {
 	const product = products.find(p => p.id === productId);
 
 	if (product) {
-		product.quantity = Math.max(1, product.quantity + change);
+		const nextQuantity = product.quantity + change;
+		const maxQuantity = product.availableQuantity ?? Number.MAX_SAFE_INTEGER;
+
+		if (change > 0 && nextQuantity > maxQuantity) {
+			toast.add({
+				title: "Stock limit reached",
+				description: `Only ${maxQuantity} item(s) are available for ${product.name}.`,
+				color: "warning"
+			});
+			return;
+		}
+
+		product.quantity = Math.max(1, nextQuantity);
 		emit("update:selectedProducts", products);
 	}
 }
@@ -217,6 +252,7 @@ watch(productSearchQuery, () => {
 					<div class="flex-1 min-w-0">
 						<div class="font-medium text-gray-500 truncate">{{ product.name }}</div>
 						<div class="text-sm text-gray-50">{{ product.price.toLocaleString('vi-VN') }} ₫</div>
+						<div class="text-xs text-gray-400">In stock: {{ product.availableQuantity ?? '-' }}</div>
 					</div>
 					
 					<!-- Quantity Controls -->
@@ -234,6 +270,7 @@ watch(productSearchQuery, () => {
 							size="xs"
 							variant="outline"
 							color="gray"
+							:disabled="typeof product.availableQuantity === 'number' && product.quantity >= product.availableQuantity"
 							@click="updateQuantity(product.id, 1)"
 						/>
 					</div>

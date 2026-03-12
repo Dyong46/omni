@@ -49,7 +49,10 @@ watch(searchQuery, () => {
 
 async function updateQuantity(id: number, quantity: number) {
 	try {
-		await productService.update(id, { quantity });
+		await productService.updateInventory(id, {
+			quantity,
+			reason: "manual_adjustment"
+		});
 		toast.add({ title: "Inventory updated", description: "Quantity updated successfully", color: "success" });
 		refresh();
 		editingId.value = null;
