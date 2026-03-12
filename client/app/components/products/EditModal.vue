@@ -4,6 +4,7 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 import type { Product } from "~/types";
 import productService from "~/services/product.service";
 import categoryService, { type Category } from "~/services/category.service";
+import mediaService from "~/services/media.service";
 
 const props = defineProps<{
 	product: Product | null
@@ -19,6 +20,33 @@ const schema = z.object({
 
 const open = ref(false);
 const isLoading = ref(false);
+const isUploading = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+function triggerFileInput() {
+	fileInputRef.value?.click();
+}
+
+function removeImage() {
+	state.image = undefined;
+}
+
+async function handleFileChange(event: Event) {
+	const file = (event.target as HTMLInputElement).files?.[0];
+
+	if (!file) return;
+	isUploading.value = true;
+	try {
+		const result = await mediaService.uploadImage(file);
+
+		state.image = result.url;
+	} catch {
+		toast.add({ title: "Upload failed", description: "Could not upload image", color: "error" });
+	} finally {
+		isUploading.value = false;
+		if (fileInputRef.value) fileInputRef.value.value = "";
+	}
+}
 
 type Schema = z.output<typeof schema>;
 
@@ -85,7 +113,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 			name: event.data.name,
 			price: event.data.price,
 			stock: event.data.quantity,
-			imageUrl: event.data.image,
+			image: event.data.image,
 			categoryId: event.data.categoryId
 		});
 
@@ -136,9 +164,40 @@ defineExpose({ open });
 					<UInput v-model.number="state.quantity" type="number" class="w-full" />
 				</UFormField>
 
-				<UFormField label="Image URL" placeholder="product.jpg" name="image">
-					<UInput v-model="state.image" class="w-full" />
-				</UFormField>
+				<div class="space-y-1.5">
+					<label for="edit-product-image" class="text-sm font-medium">Product Image</label>
+					<div v-if="state.image" class="flex items-start gap-3">
+						<img :src="state.image" alt="Preview" class="w-24 h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
+						<div class="flex flex-col gap-2 pt-1">
+							<UButton size="xs" variant="outline" icon="i-lucide-image" :loading="isUploading" @click="triggerFileInput">Change</UButton>
+							<UButton size="xs" variant="outline" color="error" icon="i-lucide-trash-2" @click="removeImage">Remove</UButton>
+						</div>
+					</div>
+					<div
+						v-else
+						class="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors"
+						:class="isUploading ? 'border-primary/50 bg-primary/5' : 'border-gray-300 dark:border-gray-600 hover:border-primary'"
+						@click="triggerFileInput"
+					>
+						<div v-if="isUploading" class="flex flex-col items-center gap-2">
+							<UIcon name="i-lucide-loader-circle" class="text-2xl text-primary animate-spin" />
+							<p class="text-sm text-muted">Uploading...</p>
+						</div>
+						<div v-else class="flex flex-col items-center gap-2">
+							<UIcon name="i-lucide-image-plus" class="text-3xl text-muted" />
+							<p class="text-sm font-medium">Click to upload image</p>
+							<p class="text-xs text-muted">JPG, PNG, WebP, GIF · max 5 MB</p>
+						</div>
+					</div>
+					<input
+						id="edit-product-image"
+						ref="fileInputRef"
+						type="file"
+						class="hidden"
+						accept="image/jpeg,image/png,image/webp,image/gif"
+						@change="handleFileChange"
+					/>
+				</div>
 
 				<UFormField label="Category" name="categoryId">
 					<USelect
