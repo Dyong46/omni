@@ -205,8 +205,32 @@ export class OrdersService {
 			order.totalAmount = totalAmount;
 		}
 
+		// If cancelling a non-draft order, restore inventory
+		const isCancelling =
+			updateOrderDto.status === 'cancelled' &&
+			order.status !== 'cancelled' &&
+			order.status !== 'draft';
+
+		if (isCancelling && !updateOrderDto.items) {
+			for (const item of order.items) {
+				const product = await this.productsRepository.findOne({
+					where: { id: item.productId },
+				});
+				if (product) {
+					product.quantity += item.quantity;
+					await this.productsRepository.save(product);
+				}
+			}
+		}
+
 		// If transitioning from draft to an active status, deduct inventory
-		if (order.status === 'draft' && updateOrderDto.status && updateOrderDto.status !== 'draft' && !updateOrderDto.items) {
+		if (
+			order.status === 'draft' &&
+			updateOrderDto.status &&
+			updateOrderDto.status !== 'draft' &&
+			updateOrderDto.status !== 'cancelled' &&
+			!updateOrderDto.items
+		) {
 			for (const item of order.items) {
 				const product = await this.productsRepository.findOne({
 					where: { id: item.productId },
@@ -302,13 +326,17 @@ export class OrdersService {
 		normalizedEndDate.setHours(23, 59, 59, 999);
 
 		if (normalizedStartDate > normalizedEndDate) {
-			throw new BadRequestException('startDate must be earlier than or equal to endDate');
+			throw new BadRequestException(
+				'startDate must be earlier than or equal to endDate',
+			);
 		}
 
 		const orders = await this.ordersRepository
 			.createQueryBuilder('order')
 			.select(['order.createdAt', 'order.totalAmount'])
-			.where('order.createdAt >= :startDate', { startDate: normalizedStartDate })
+			.where('order.createdAt >= :startDate', {
+				startDate: normalizedStartDate,
+			})
 			.andWhere('order.createdAt <= :endDate', { endDate: normalizedEndDate })
 			.orderBy('order.createdAt', 'ASC')
 			.getMany();
@@ -316,7 +344,10 @@ export class OrdersService {
 		const buckets = new Map<string, RevenueChartPoint>();
 
 		for (const order of orders) {
-			const bucketStart = this.getBucketStartDate(order.createdAt, normalizedPeriod);
+			const bucketStart = this.getBucketStartDate(
+				order.createdAt,
+				normalizedPeriod,
+			);
 			const bucketKey = this.formatDateKey(bucketStart);
 			const currentBucket = buckets.get(bucketKey) ?? {
 				date: bucketKey,
