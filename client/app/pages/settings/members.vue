@@ -230,11 +230,11 @@ onMounted(() => {
 				<div class="space-y-3">
 					<div class="space-y-1">
 						<p class="text-sm font-medium text-highlighted">Username</p>
-						<UInput v-model="createForm.username" placeholder="Enter username" />
+						<UInput v-model="createForm.username" class="w-full" placeholder="Enter username" />
 					</div>
 					<div class="space-y-1">
 						<p class="text-sm font-medium text-highlighted">Password</p>
-						<UInput v-model="createForm.password" type="password" placeholder="Enter password" />
+						<UInput v-model="createForm.password" type="password" class="w-full" placeholder="Enter password" />
 					</div>
 				</div>
 			</template>
@@ -251,11 +251,11 @@ onMounted(() => {
 				<div class="space-y-3">
 					<div class="space-y-1">
 						<p class="text-sm font-medium text-highlighted">Username</p>
-						<UInput v-model="editForm.username" placeholder="Enter username" />
+						<UInput v-model="editForm.username" class="w-full" placeholder="Enter username" />
 					</div>
 					<div class="space-y-1">
 						<p class="text-sm font-medium text-highlighted">New password</p>
-						<UInput v-model="editForm.password" type="password" placeholder="Leave empty to keep current password" />
+						<UInput v-model="editForm.password" type="password" class="w-full" placeholder="Leave empty to keep current password" />
 					</div>
 				</div>
 			</template>
