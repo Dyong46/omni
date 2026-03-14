@@ -3,18 +3,20 @@ import {
 	UnauthorizedException,
 	ConflictException,
 	NotFoundException,
+	BadRequestException,
+	ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { StringValue } from 'ms';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { User, UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -164,6 +166,13 @@ export class AuthService {
 		};
 	}
 
+	async createManagedUser(createUserDto: CreateUserDto) {
+		return this.createUser({
+			...createUserDto,
+			role: UserRole.USER,
+		});
+	}
+
 	/**
 	 * Update user
 	 */
@@ -208,6 +217,26 @@ export class AuthService {
 		};
 	}
 
+	async updateManagedUser(id: number, updateUserDto: UpdateUserDto) {
+		const user = await this.userRepository.findOne({ where: { id } });
+		if (!user) {
+			throw new NotFoundException('User not found');
+		}
+
+		if (user.role !== UserRole.USER) {
+			throw new ForbiddenException('Only user-role accounts can be managed here');
+		}
+
+		if (updateUserDto.role && updateUserDto.role !== UserRole.USER) {
+			throw new BadRequestException('Members can only have role user');
+		}
+
+		return this.updateUser(id, {
+			...updateUserDto,
+			role: UserRole.USER,
+		});
+	}
+
 	/**
 	 * Delete user
 	 */
@@ -227,6 +256,24 @@ export class AuthService {
 		};
 	}
 
+	async deleteManagedUser(id: number) {
+		const user = await this.userRepository.findOne({ where: { id } });
+		if (!user) {
+			throw new NotFoundException('User not found');
+		}
+
+		if (user.role !== UserRole.USER) {
+			throw new ForbiddenException('Cannot delete admin accounts from members management');
+		}
+
+		await this.userRepository.remove(user);
+
+		return {
+			message: 'User deleted successfully',
+			id,
+		};
+	}
+
 	/**
 	 * Get all users
 	 */
@@ -235,6 +282,24 @@ export class AuthService {
 			select: ['id', 'username', 'role', 'createdAt', 'updatedAt'],
 		});
 		return users;
+	}
+
+	async getManagedUsers() {
+		return this.userRepository.find({
+			where: { role: UserRole.USER },
+			select: ['id', 'username', 'role', 'createdAt', 'updatedAt'],
+			order: { createdAt: 'DESC' },
+		});
+	}
+
+	async getManagedUserById(id: number) {
+		const user = await this.getUserById(id);
+
+		if (user.role !== UserRole.USER) {
+			throw new ForbiddenException('Only user-role accounts can be managed here');
+		}
+
+		return user;
 	}
 
 	/**

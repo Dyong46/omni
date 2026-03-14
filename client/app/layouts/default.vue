@@ -49,6 +49,13 @@
 import type { NavigationMenuItem } from "@nuxt/ui";
 
 const toast = useToast();
+const authStore = useAuthStore();
+
+if (!authStore.isAuthenticated && import.meta.client) {
+	authStore.initAuth();
+}
+
+const isAdmin = computed(() => authStore.user?.role === "admin");
 
 const open = ref(false);
 
@@ -161,13 +168,15 @@ const links = [
 			onSelect: () => {
 				open.value = false;
 			}
-		}, {
-			label: "Members",
-			to: "/settings/members",
-			onSelect: () => {
-				open.value = false;
-			}
-		}, {
+		}, ...(isAdmin.value
+			? [{
+				label: "Members",
+				to: "/settings/members",
+				onSelect: () => {
+					open.value = false;
+				}
+			}]
+			: []), {
 			label: "Notifications",
 			to: "/settings/notifications",
 			onSelect: () => {

@@ -3,7 +3,7 @@ import axios from "~/utils/axios";
 export interface AuthUser {
 	id: number;
 	username: string;
-	role: string;
+	role: "admin" | "user";
 	createdAt: string;
 	updatedAt: string;
 }
@@ -22,7 +22,17 @@ export interface LoginResponse {
 export interface RegisterRequest {
 	username: string;
 	password: string;
-	role?: string;
+	role?: "admin" | "user";
+}
+
+export interface CreateManagedUserRequest {
+	username: string;
+	password: string;
+}
+
+export interface UpdateManagedUserRequest {
+	username?: string;
+	password?: string;
 }
 
 class AuthService {
@@ -61,6 +71,34 @@ class AuthService {
 	 */
 	async updateProfile(data: Partial<AuthUser>): Promise<AuthUser> {
 		return axios.patch(`${this.endpoint}/profile`, data);
+	}
+
+	/**
+	 * Admin: list managed users (role=user)
+	 */
+	async getUsers(): Promise<AuthUser[]> {
+		return axios.get(`${this.endpoint}/users`);
+	}
+
+	/**
+	 * Admin: create a managed user (role=user)
+	 */
+	async createUser(data: CreateManagedUserRequest): Promise<AuthUser> {
+		return axios.post(`${this.endpoint}/users`, data);
+	}
+
+	/**
+	 * Admin: update a managed user (role=user)
+	 */
+	async updateUser(id: number, data: UpdateManagedUserRequest): Promise<AuthUser> {
+		return axios.put(`${this.endpoint}/users/${id}`, data);
+	}
+
+	/**
+	 * Admin: delete a managed user (role=user)
+	 */
+	async deleteUser(id: number): Promise<{ message: string; id: number }> {
+		return axios.delete(`${this.endpoint}/users/${id}`);
 	}
 
 	/**

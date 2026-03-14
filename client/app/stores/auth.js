@@ -17,6 +17,9 @@ export const useAuthStore = defineStore("auth", {
 	actions: {
 		/**
 		 * Set authentication data after login
+		 * @param {string} token
+		 * @param {{ id: number, username: string, role: string, createdAt?: string, updatedAt?: string }} user
+		 * @param {string | null} [refreshToken=null]
 		 */
 		setAuth(token, user, refreshToken = null) {
 			this.token = token;

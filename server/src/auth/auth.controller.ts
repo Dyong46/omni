@@ -29,7 +29,9 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { User } from '../users/entities/user.entity';
+import { Roles } from './decorators/roles.decorator';
+import { RolesGuard } from './guards/roles.guard';
+import { User, UserRole } from '../users/entities/user.entity';
 
 @ApiTags('Authentication & User Management')
 @Controller('auth')
@@ -233,9 +235,11 @@ export class AuthController {
 	 * Create new user (for admin)
 	 */
 	@Post('users')
+	@UseGuards(RolesGuard)
+	@Roles(UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Create new user (Admin)',
-		description: 'Admin creates a new user with custom permissions',
+		description: 'Admin creates a user account. Role is forced to user.',
 	})
 	@ApiBody({
 		type: CreateUserDto,
@@ -276,16 +280,18 @@ export class AuthController {
 		description: 'Username already exists',
 	})
 	async createUser(@Body() createUserDto: CreateUserDto) {
-		return this.authService.createUser(createUserDto);
+		return this.authService.createManagedUser(createUserDto);
 	}
 
 	/**
 	 * Get all users
 	 */
 	@Get('users')
+	@UseGuards(RolesGuard)
+	@Roles(UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Get list of users',
-		description: 'Get all users in the system',
+		description: 'Get all member accounts with role=user',
 	})
 	@ApiResponse({
 		status: 200,
@@ -310,13 +316,15 @@ export class AuthController {
 		},
 	})
 	async getAllUsers() {
-		return this.authService.getAllUsers();
+		return this.authService.getManagedUsers();
 	}
 
 	/**
 	 * Get user by ID
 	 */
 	@Get('users/:id')
+	@UseGuards(RolesGuard)
+	@Roles(UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Get user information',
 		description: 'Get detailed user information by ID',
@@ -344,13 +352,15 @@ export class AuthController {
 		description: 'User not found',
 	})
 	async getUserById(@Param('id', ParseIntPipe) id: number) {
-		return this.authService.getUserById(id);
+		return this.authService.getManagedUserById(id);
 	}
 
 	/**
 	 * Update user
 	 */
 	@Put('users/:id')
+	@UseGuards(RolesGuard)
+	@Roles(UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Update user',
 		description: 'Update user information (username, password, role)',
@@ -416,13 +426,15 @@ export class AuthController {
 		@Param('id', ParseIntPipe) id: number,
 		@Body() updateUserDto: UpdateUserDto,
 	) {
-		return this.authService.updateUser(id, updateUserDto);
+		return this.authService.updateManagedUser(id, updateUserDto);
 	}
 
 	/**
 	 * Delete user
 	 */
 	@Delete('users/:id')
+	@UseGuards(RolesGuard)
+	@Roles(UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Delete user',
 		description: 'Delete user from the system',
@@ -447,7 +459,7 @@ export class AuthController {
 		description: 'User not found',
 	})
 	async deleteUser(@Param('id', ParseIntPipe) id: number) {
-		return this.authService.deleteUser(id);
+		return this.authService.deleteManagedUser(id);
 	}
 
 	/**
@@ -492,10 +504,11 @@ export class AuthController {
 	 * Change password (Admin - by user ID)
 	 */
 	@Put('users/:id/change-password')
+	@UseGuards(RolesGuard)
+	@Roles(UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Change password',
-		description:
-			'Change user password with current password verification (User can only change their own password)',
+		description: 'Admin changes password for a user account',
 	})
 	@ApiParam({
 		name: 'id',

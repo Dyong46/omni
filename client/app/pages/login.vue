@@ -46,10 +46,12 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 		// Navigate to home
 		await router.push("/");
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : "Invalid username or password";
+
 		toast.add({
 			title: "Login failed",
-			description: error.message || "Invalid username or password",
+			description: message,
 			color: "error",
 			icon: "i-lucide-alert-circle"
 		});
@@ -89,6 +91,7 @@ useSeoMeta({
 							<UInput
 								v-model="state.username"
 								type="text"
+								class="w-full"
 								placeholder="Enter your username"
 								icon="i-lucide-user"
 								:disabled="loading"
@@ -99,6 +102,7 @@ useSeoMeta({
 							<UInput
 								v-model="state.password"
 								type="password"
+								class="w-full"
 								placeholder="Enter your password"
 								icon="i-lucide-lock"
 								:disabled="loading"
